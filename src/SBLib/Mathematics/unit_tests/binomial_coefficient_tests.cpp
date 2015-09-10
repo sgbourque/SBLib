@@ -91,7 +91,7 @@ class binomial_table_generator
 	void write_coefficient(std::ostream& out, int dimension_size, int rank_size)
 	{
 		out << "template<> struct binomial_coefficient_ref_table<"
-		    << dimension_size << ", " << rank_size << ">"\
+		    << dimension_size << ", " << rank_size << "> "\
 		       "{ enum { value = " << ref_results[dimension_size - min_dimension][rank_size - min_rank] << " }; };"
 		    << std::endl;
 	}
