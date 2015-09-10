@@ -59,14 +59,12 @@ struct binomial_coefficient<dimension_size, dimension_size>
 template<>
 struct binomial_coefficient<-1, 0>
 {
-public:
 	enum { value = 1 };
 };
 
 template<>
 struct binomial_coefficient<-1, -1>
 {
-public:
 	enum { value = 1 };
 };
 
