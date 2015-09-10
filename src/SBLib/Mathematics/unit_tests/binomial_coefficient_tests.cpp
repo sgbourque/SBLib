@@ -27,6 +27,7 @@ namespace
 }
 
 #if defined( GENERATE_TABLE )
+
 namespace
 {
 	// Genrated from Maple 7
@@ -81,15 +82,15 @@ class binomial_table_generator
 	{
 		out << "//////////////////////////////////////////////////////////////////////\n"\
 		       "// This file is auto-generated from\n"\
-			   "// " __BASE_FILE__ "\n"\
-			   "//////////////////////////////////////////////////////////////////////\n"\
+		       "// " __BASE_FILE__ "\n"\
+		       "//////////////////////////////////////////////////////////////////////\n"\
 		       "template<int dimension_size, int rank_size> struct binomial_coefficient_ref_table;\n"
 		    << std::endl;
 	}
 	void write_coefficient(std::ostream& out, int dimension_size, int rank_size)
 	{
 		out << "template<> struct binomial_coefficient_ref_table<"
-			<< dimension_size << ", " << rank_size << ">"\
+		    << dimension_size << ", " << rank_size << ">"\
 		       "{ enum { value = " << ref_results[dimension_size - min_dimension][rank_size - min_rank] << " }; };"
 		    << std::endl;
 	}
