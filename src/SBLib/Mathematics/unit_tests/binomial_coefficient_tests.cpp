@@ -108,9 +108,9 @@ binomial_table_generator binomial_table_generator::instance;
 template<int value, int ref_value, typename caller_type>
 struct are_equal
 {
-	static void check()
+	static void static_check()
 	{
-		static_assert(value == ref_value, "Incorrect binomial coefficient value in " __FUNCTION__);
+		static_assert(value == ref_value, "Incorrect value in " __FUNCTION__);
 	}
 };
 
@@ -125,7 +125,7 @@ struct binomial_coefficient_check
 
 	binomial_coefficient_check()
 	{
-		are_equal<value, ref_value, binomial_coefficient_check>::check();
+		are_equal<value, ref_value, binomial_coefficient_check>::static_check();
 	}
 };
 
