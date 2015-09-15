@@ -105,6 +105,15 @@ binomial_table_generator binomial_table_generator::instance;
 
 #include TEST_TABLE_FILE
 
+template<int value, int ref_value, typename caller_type>
+struct are_equal
+{
+	static void check()
+	{
+		static_assert(value == ref_value, "Incorrect binomial coefficient value in " __FUNCTION__);
+	}
+};
+
 template<int dimension_size, int rank_size>
 struct binomial_coefficient_check
 {
@@ -116,7 +125,7 @@ struct binomial_coefficient_check
 
 	binomial_coefficient_check()
 	{
-		static_assert(value == ref_value, "Incorrect binomial coefficient value in " __FUNCTION__);
+		are_equal<value, ref_value, binomial_coefficient_check>::check();
 	}
 };
 

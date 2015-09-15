@@ -24,14 +24,14 @@ private:
 		k    = (dimension_size >= 0) ? rank_size : minimal_rank,
 		sign = (dimension_size >= 0) ? sigma_0   : minimal_sign,
 
-		zero_filter = (n >= 0) && ((k < 0) || (k > n)) ? 0 : +1,
+		projection = (n >= 0) && ((k < 0) || (k > n)) ? 0 : +1,
 	};
 
 public:
 	// using Pascal triangle construction
 	enum
 	{
-		value = zero_filter * sign * (
+		value = projection * sign * (
 		           binomial_coefficient<n - 1, k - 1>::value
 		         + binomial_coefficient<n - 1, k    >::value
 		        )
@@ -74,11 +74,11 @@ struct binomial_coefficient<-1, rank_size>
 private:
 	enum
 	{
-		rank_mod_2 = (rank_size & 1) == 0 ? +1 : 0,
+		rank_mod_2 = (rank_size & 1),
 	};
 public:
 	enum
 	{
-		value = (rank_size >= 0) ? 2 * rank_mod_2 - 1 : 1 - 2 * rank_mod_2,
+		value = (rank_size >= 0) ? 1 - 2 * rank_mod_2 : 2 * rank_mod_2 - 1,
 	};
 };
