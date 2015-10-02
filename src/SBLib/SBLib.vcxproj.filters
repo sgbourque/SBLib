@@ -25,6 +25,12 @@
     <Filter Include="Source Files\unit_tests\Mathematics\unit_tests">
       <UniqueIdentifier>{0eaf5007-1d23-45bc-9fb6-2b901422d7d6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Traits">
+      <UniqueIdentifier>{3646557a-bcee-4d1c-9220-06268478dd3c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Algorithms">
+      <UniqueIdentifier>{cb31afdc-61b9-4d9a-a689-2cd44ea967dd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -40,6 +46,12 @@
     </ClInclude>
     <ClInclude Include="Mathematics\unit_tests\binomial_coefficient_ref_table.h">
       <Filter>Source Files\unit_tests\Mathematics\unit_tests</Filter>
+    </ClInclude>
+    <ClInclude Include="Traits\bit_traits.h">
+      <Filter>Header Files\Traits</Filter>
+    </ClInclude>
+    <ClInclude Include="Algorithms\static_for_each.h">
+      <Filter>Header Files\Algorithms</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

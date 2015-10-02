@@ -72,8 +72,10 @@
     <ClCompile Include="Mathematics\unit_tests\binomial_coefficient_tests.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Algorithms\static_for_each.h" />
     <ClInclude Include="Mathematics\binomial_coefficient.h" />
     <ClInclude Include="Mathematics\unit_tests\binomial_coefficient_ref_table.h" />
+    <ClInclude Include="Traits\bit_traits.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
