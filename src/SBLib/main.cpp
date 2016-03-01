@@ -3,9 +3,6 @@
 
 #include <array>
 
-// Temp while constexpr isnt supported, remove this when it becomes available
-//#define constexpr
-
 #include <Traits/bit_traits.h>
 #include <Traits/clifford_traits.h>
 
@@ -82,10 +79,7 @@ int main()
 	std::cin.get();
 }
 
-#endif
-
-
-#if 0
+#elif 1
 
 
 //
