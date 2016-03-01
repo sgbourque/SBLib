@@ -39,6 +39,9 @@
     <ClCompile Include="Mathematics\unit_tests\binomial_coefficient_tests.cpp">
       <Filter>Source Files\unit_tests\Mathematics\unit_tests</Filter>
     </ClCompile>
+    <ClCompile Include="Mathematics\unit_tests\clifford_traits_tests.cpp">
+      <Filter>Source Files\unit_tests\Mathematics\unit_tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Mathematics\binomial_coefficient.h">
@@ -52,6 +55,9 @@
     </ClInclude>
     <ClInclude Include="Algorithms\static_for_each.h">
       <Filter>Header Files\Algorithms</Filter>
+    </ClInclude>
+    <ClInclude Include="Traits\clifford_traits.h">
+      <Filter>Header Files\Traits</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

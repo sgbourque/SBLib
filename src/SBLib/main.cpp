@@ -3,237 +3,39 @@
 
 #include <array>
 
-
 // Temp while constexpr isnt supported, remove this when it becomes available
-#define constexpr
+//#define constexpr
 
 #include <Traits/bit_traits.h>
+#include <Traits/clifford_traits.h>
 
-//
-// default_basis_big_endian
-//
-// if true, then multivector basis defaults to big endian, for instance
-//     7 ~ (e0 ^ e1 ^ e2)
-// if false, multivector basis defaults to little endian, for instance
-//     7 ~ (e2 ^ e1 ^ e0)
-//
-static const bool default_basis_big_endian = true;
-
-template<size_t first, size_t second, bool big_endian = default_basis_big_endian>
-struct alternating_traits
+template<size_t embedding_space_bits, typename scalar_type>
+struct module
 {
-private:
-	typedef bit_traits<first>  first_traits;
-	typedef bit_traits<second> second_traits;
-	enum : size_t
+	typedef bit_traits<embedding_space_bits> bit_traits_t;
+	enum
 	{
-		second_population        = second_traits::population_count,
-		second_permute_bit_index = (big_endian ? 0 : second_population - 1),
-		second_permute_bit       = second_traits::set_bit<second_permute_bit_index>::value,
+		dimension_size = bit_traits_t::population_count,
+	};
 
-		low_bit_mask  = (second_permute_bit << 1) - 1,
-		high_bit_mask = ~low_bit_mask,
-		permute_bit_mask              = (first & (big_endian ? high_bit_mask : low_bit_mask)),
-		permute_bit_permutation_count = bit_traits<permute_bit_mask>::population_count,
+	typedef scalar_type scalar_t;
+	typedef std::array<scalar_t, dimension_size> container_t;
 
-		next_first  = (first | second_permute_bit),
-		next_second = (second & ~second_permute_bit),
-	};
-	enum : int
-	{
-		last_bit_sign = (permute_bit_permutation_count & 1) != 0 ? -1 : +1,
-		residual_sign = alternating_traits<next_first, next_second, big_endian>::sign,
-	};
-public:
-	enum : int
-	{
-		sign = (first & second) != 0 ? 0 : last_bit_sign * residual_sign,
-	};
-	enum : size_t
-	{
-		bit_set = (first & second) != 0 ? 0 : (first | second),
-	};
+	container_t coordinates;
 };
-template<size_t first, bool big_endian>
-struct alternating_traits<first, 0, big_endian>
+
+// TODO : use SSE & other optimizations as needed
+
+#if 0
+
+#include <iostream>
+#include <iomanip>
+int main()
 {
-public:
-	enum : int
-	{
-		sign = +1,
-	};
-	enum : size_t
-	{
-		bit_set = first,
-	};
-};
-template<size_t second, bool big_endian>
-struct alternating_traits<0, second, big_endian>
-{
-public:
-	enum : int
-	{
-		sign = +1,
-	};
-	enum : size_t
-	{
-		bit_set = second,
-	};
-};
-template<bool big_endian>
-struct alternating_traits<0, 0, big_endian>
-{
-public:
-	enum : int
-	{
-		sign = +1,
-	};
-	enum : size_t
-	{
-		bit_set = 0,
-	};
-};
-static_assert(alternating_traits<1,2, true>::sign == +1, "Invalid reversion conjugacy sign");
-static_assert(alternating_traits<2,1, true>::sign == -1, "Invalid reversion conjugacy sign");
+	std::cin.get();
+}
 
-static_assert(alternating_traits<1,2, false>::sign == -1, "Invalid reversion conjugacy sign");
-static_assert(alternating_traits<2,1, false>::sign == +1, "Invalid reversion conjugacy sign");
-
-
-template<size_t bit_set>
-struct reversion_conjugacy_traits
-{
-private:
-	typedef bit_traits<bit_set> traits;
-public:
-	enum : int
-	{
-		sign = (traits::population_count & 2) == 2 ? -1 : +1,
-	};
-};
-static_assert(reversion_conjugacy_traits<(1|2)>::sign == -1, "Invalid reversion conjugacy sign");
-
-template<size_t bit_set>
-struct grade_conjugacy_traits
-{
-private:
-	typedef bit_traits<bit_set> traits;
-public:
-	enum : int
-	{
-		sign = (traits::population_count & 1) == 1 ? -1 : +1,
-	};
-};
-static_assert(grade_conjugacy_traits<0>::sign == +1, "Invalid grade conjugacy sign");
-static_assert(grade_conjugacy_traits<1>::sign == -1, "Invalid grade conjugacy sign");
-static_assert(grade_conjugacy_traits<3>::sign == +1, "Invalid grade conjugacy sign");
-static_assert(grade_conjugacy_traits<7>::sign == -1, "Invalid grade conjugacy sign");
-
-template<size_t bit_set>
-struct clifford_adjoint_conjugacy_traits
-{
-private:
-	typedef bit_traits<bit_set> traits;
-public:
-	enum : int
-	{
-		sign = grade_conjugacy_traits<bit_set>::sign * reversion_conjugacy_traits<bit_set>::sign,
-	};
-};
-static_assert(clifford_adjoint_conjugacy_traits<0>::sign == +1, "Invalid adjoint conjugacy sign");
-static_assert(clifford_adjoint_conjugacy_traits<1>::sign == -1, "Invalid adjoint conjugacy sign");
-static_assert(clifford_adjoint_conjugacy_traits<3>::sign == -1, "Invalid adjoint conjugacy sign");
-static_assert(clifford_adjoint_conjugacy_traits<7>::sign == +1, "Invalid adjoint conjugacy sign");
-
-template<size_t bit_set, size_t mask, bool big_endian = default_basis_big_endian>
-struct hodge_conjugacy_traits
-{
-private:
-	enum : size_t
-	{
-		parallel_projection      = (bit_set & mask),
-		perpendicular_projection = (bit_set & ~parallel_projection),
-		hodge_complement         = (mask & ~parallel_projection),
-	};
-	enum : int
-	{
-		hodge_sign         = alternating_traits<parallel_projection, hodge_complement, big_endian>::sign,
-		perpendicular_sign = alternating_traits<perpendicular_projection, parallel_projection, big_endian>::sign,
-		projection_sign    = +1,//alternating_traits<perpendicular_projection, hodge_complement, big_endian>::sign,
-	};
-public:
-	enum : int
-	{
-		sign = hodge_sign * perpendicular_sign * projection_sign,
-	};
-	enum : size_t
-	{
-		//bit_set = (perpendicular_projection | hodge_complement),
-		bit_set = hodge_complement,
-	};
-};
-//
-// dimension 1
-//
-// rank 0
-static_assert(hodge_conjugacy_traits<0, 1>::sign == +1, "Invalid hodge conjugacy sign");
-// rank 1
-static_assert(hodge_conjugacy_traits<1, 1>::sign == +1, "Invalid hodge conjugacy sign");
-// duals
-static_assert(hodge_conjugacy_traits<0, 1>::bit_set == 1,  "Invalid hodge conjugate");
-static_assert(hodge_conjugacy_traits<1, 1>::bit_set == 0,  "Invalid hodge conjugate");
-
-//
-// dimension 2
-//
-// rank 0
-static_assert(hodge_conjugacy_traits<0, 3>::sign == +1, "Invalid hodge conjugacy sign");
-// rank 1
-static_assert(hodge_conjugacy_traits<1, 3, true>::sign  == +1, "Invalid hodge conjugacy sign");
-static_assert(hodge_conjugacy_traits<2, 3, true>::sign  == -1, "Invalid hodge conjugacy sign");
-static_assert(hodge_conjugacy_traits<1, 3, false>::sign == -1, "Invalid hodge conjugacy sign");
-static_assert(hodge_conjugacy_traits<2, 3, false>::sign == +1, "Invalid hodge conjugacy sign");
-// rank 2
-static_assert(hodge_conjugacy_traits<3, 3>::sign == +1, "Invalid hodge conjugacy sign");
-// duals
-static_assert(hodge_conjugacy_traits<0, 3>::bit_set == 3,  "Invalid hodge conjugate");
-static_assert(hodge_conjugacy_traits<1, 3>::bit_set == 2,  "Invalid hodge conjugate");
-static_assert(hodge_conjugacy_traits<2, 3>::bit_set == 1,  "Invalid hodge conjugate");
-static_assert(hodge_conjugacy_traits<3, 3>::bit_set == 0,  "Invalid hodge conjugate");
-
-//
-// dimension 3
-//
-// rank 0
-static_assert(hodge_conjugacy_traits<0, 7>::sign == +1, "Invalid hodge conjugacy sign");
-// rank 1
-static_assert(hodge_conjugacy_traits<1, 7>::sign == +1, "Invalid hodge conjugacy sign");
-static_assert(hodge_conjugacy_traits<2, 7>::sign == -1, "Invalid hodge conjugacy sign");
-static_assert(hodge_conjugacy_traits<4, 7>::sign == +1, "Invalid hodge conjugacy sign");
-// rank 2
-static_assert(hodge_conjugacy_traits<6, 7>::sign == +1, "Invalid hodge conjugacy sign");
-static_assert(hodge_conjugacy_traits<5, 7>::sign == -1, "Invalid hodge conjugacy sign");
-static_assert(hodge_conjugacy_traits<3, 7>::sign == +1, "Invalid hodge conjugacy sign");
-// rank 3
-static_assert(hodge_conjugacy_traits<7, 7>::sign == +1, "Invalid hodge conjugacy sign");
-// duals
-static_assert(hodge_conjugacy_traits<0, 7>::bit_set == 7,  "Invalid hodge conjugate");
-static_assert(hodge_conjugacy_traits<1, 7>::bit_set == 6,  "Invalid hodge conjugate");
-static_assert(hodge_conjugacy_traits<2, 7>::bit_set == 5,  "Invalid hodge conjugate");
-static_assert(hodge_conjugacy_traits<4, 7>::bit_set == 3,  "Invalid hodge conjugate");
-static_assert(hodge_conjugacy_traits<6, 7>::bit_set == 1,  "Invalid hodge conjugate");
-static_assert(hodge_conjugacy_traits<5, 7>::bit_set == 2,  "Invalid hodge conjugate");
-static_assert(hodge_conjugacy_traits<3, 7>::bit_set == 4,  "Invalid hodge conjugate");
-static_assert(hodge_conjugacy_traits<7, 7>::bit_set == 0,  "Invalid hodge conjugate");
-
-//
-// outer check in dimension 2 + 1 generated by {e0, e1} + {e2}
-//
-// (e0 ^ e2) ^ *_{e0^e1}(e0 ^ e2) = (e0 ^ e2) ^ (-e_1) = (e0 ^ e1 ^ e2) = <(e0 ^ e2), (e0 ^ e2)> (e0 ^ e1 ^ e2)
-// (e2 ^ e0) ^ *_{e1^e0}(e2 ^ e0) = (e2 ^ e0) ^ (-e_1) = (e2 ^ e1 ^ e0) = <(e2 ^ e0), (e2 ^ e0)> (e2 ^ e1 ^ e0)
-//
-static_assert(hodge_conjugacy_traits<(1|4), 3>::sign    == -1, "Invalid hodge conjugacy sign");
-static_assert(hodge_conjugacy_traits<(1|4), 3>::bit_set ==  2, "Invalid hodge conjugate");
+#elif 1
 
 #include <iostream>
 #include <iomanip>
@@ -243,7 +45,7 @@ int main()
 	std::cout << traits::value << " (" << traits::population_count << ")";
 
 	std::cout << " -> (";
-	static_for_each<0, traits::population_count, get_set_bit_helper<traits>, increment_bit_index_helper<traits>>::iterate(
+	static_for_each<0, traits::population_count, get_bit_helper<traits>, increment_bit_index_helper<traits>>::iterate(
 		[](size_t value, size_t cur_loop) -> void
 		{
 			char* delimiter = ((cur_loop == 0) ? "" : ",");
@@ -253,10 +55,10 @@ int main()
 	std::cout << ")";
 
 	std::cout << " ~ (";
-	static_for_each<traits::set_bit<0>::value, traits::set_bit<traits::population_count>::value, get_bit_index_helper<traits>, next_set_bit_helper<traits>>::iterate(
+	static_for_each<traits::get_bit<0>::value, traits::get_bit<traits::population_count>::value, get_bit_index_helper<traits>, next_bit_helper<traits>>::iterate(
 		[](size_t value, size_t cur_loop) -> void
 		{
-			char* delimiter = ((cur_loop == traits::set_bit<0>::value) ? "" : ",");
+			char* delimiter = ((cur_loop == traits::get_bit<0>::value) ? "" : ",");
 			std::cout << delimiter << value;
 		}
 	);
@@ -280,6 +82,7 @@ int main()
 	std::cin.get();
 }
 
+#endif
 
 
 #if 0

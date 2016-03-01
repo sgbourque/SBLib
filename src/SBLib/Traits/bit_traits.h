@@ -17,15 +17,15 @@ public:
 	};
 
 	template<size_t index>
-	struct set_bit
+	struct get_bit
 	{
 		enum : size_t
 		{
-			value = bit_traits<remaining_bits>::set_bit<index - 1>::value,
+			value = bit_traits<remaining_bits>::get_bit<index - 1>::value,
 		};
 	};
 	template<>
-	struct set_bit<0>
+	struct get_bit<0>
 	{
 		enum : size_t
 		{
@@ -50,6 +50,7 @@ public:
 		};
 	};
 
+/*
 	template<size_t index>
 	static constexpr size_t get_set_bit()
 	{
@@ -60,6 +61,7 @@ public:
 	{
 		return bit_index<bit>::value;
 	}
+*/
 };
 template<>
 struct bit_traits<0>
@@ -72,7 +74,7 @@ public:
 	};
 
 	template<size_t>
-	struct set_bit
+	struct get_bit
 	{
 		enum : size_t
 		{
@@ -84,6 +86,7 @@ public:
 	{
 	};
 
+/*
 	template<size_t index>
 	static constexpr size_t get_set_bit()
 	{
@@ -94,17 +97,18 @@ public:
 	{
 		return bit_index<bit>::value;
 	}
+*/
 };
 
 template<class traits>
-struct get_set_bit_helper
+struct get_bit_helper
 {
 	template<size_t index>
 	struct get_helper
 	{
 		enum : size_t
 		{
-			value = traits::set_bit<index>::value,
+			value = traits::get_bit<index>::value,
 		};
 	};
 
@@ -152,7 +156,7 @@ struct get_bit_index_helper
 	}
 };
 template<class traits>
-struct next_set_bit_helper
+struct next_bit_helper
 {
 	template<size_t bit>
 	struct increment_helper
@@ -165,7 +169,7 @@ struct next_set_bit_helper
 	public:
 		enum : size_t
 		{
-			value = traits::set_bit<next_index>::value,
+			value = traits::get_bit<next_index>::value,
 		};
 	};
 
