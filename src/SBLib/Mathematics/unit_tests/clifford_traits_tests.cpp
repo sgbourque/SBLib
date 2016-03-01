@@ -1,6 +1,3 @@
-// Temp while constexpr isnt supported, remove this when it becomes available
-#define constexpr
-
 #include <Traits/clifford_traits.h>
 
 static_assert(alternating_traits<1,2, true>::sign == +1, "Invalid reversion conjugacy sign");
