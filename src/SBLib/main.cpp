@@ -1,25 +1,28 @@
 #include <Algorithms/static_for_each.h>
 #include <Mathematics/binomial_coefficient.h>
-
-#include <array>
-
 #include <Traits/bit_traits.h>
 #include <Traits/clifford_traits.h>
 
-template<size_t embedding_space_bits, typename scalar_type>
-struct module
+#include <array>
+
+template<size_t _dimension_size>
+struct euclidian_space
 {
-	typedef bit_traits<embedding_space_bits> bit_traits_t;
+private:
 	enum
 	{
-		dimension_size = bit_traits_t::population_count,
+		space_mask = (1 << _dimension_size) - 1,
 	};
+	typedef bit_traits<space_mask> traits;
+	static_assert(traits::population_count == _dimension_size, "dimension does not match");
 
-	typedef scalar_type scalar_t;
-	typedef std::array<scalar_t, dimension_size> container_t;
-
-	container_t coordinates;
+public:
+	enum
+	{
+		dimension_size = _dimension_size,
+	};
 };
+euclidian_space<3> test;
 
 // TODO : use SSE & other optimizations as needed
 

@@ -29,7 +29,7 @@ private:
 
 public:
 	// using Pascal triangle construction
-	enum
+	enum : long long
 	{
 		value = projection * sign * (
 		           binomial_coefficient<n - 1, k - 1>::value

@@ -134,6 +134,9 @@
     <ClInclude Include="Traits\bit_traits.h" />
     <ClInclude Include="Traits\clifford_traits.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Mathematics\unit_tests\binomial_coefficient_maple_output.inc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

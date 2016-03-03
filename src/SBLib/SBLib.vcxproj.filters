@@ -60,4 +60,9 @@
       <Filter>Header Files\Traits</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Mathematics\unit_tests\binomial_coefficient_maple_output.inc">
+      <Filter>Source Files\unit_tests\Mathematics\unit_tests</Filter>
+    </None>
+  </ItemGroup>
 </Project>
