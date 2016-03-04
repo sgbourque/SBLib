@@ -13,7 +13,7 @@ struct are_equal
 	}
 };
 
-#if !defined( NO_STATIC_UNIT_TESTS ) || defined( UNIT_TESTS )
+#if defined( STATIC_UNIT_TESTS )
 #define TEST_BINOMIAL_COEFFICIENTS
 #endif
 
@@ -160,55 +160,69 @@ struct binomial_coefficient_check
 	}
 };
 
-template<int min_dimension, int max_dimension, int min_rank, int max_rank, int dimension_size = min_dimension, int rank_size = min_rank>
+template<int min_dimension, int max_dimension, int min_rank, int max_rank>
 struct binomial_coefficient_test_helper
 {
 	enum
 	{
-		next_dimension = (rank_size < max_rank) ? dimension_size : dimension_size + 1,
-		next_rank      = (rank_size < max_rank) ? rank_size + 1  : min_rank,
+		min_dimension_split0 = min_dimension,
+		max_dimension_split0 = min_dimension + (max_dimension - min_dimension) / 2,
+		min_dimension_split1 = max_dimension_split0 + 1,
+		max_dimension_split1 = max_dimension,
+
+		min_rank_split0 = min_rank,
+		max_rank_split0 = min_rank + (max_rank - min_rank) / 2,
+		min_rank_split1 = max_rank_split0 + 1,
+		max_rank_split1 = max_rank,
 	};
-
-	binomial_coefficient_test_helper<min_dimension, max_dimension, min_rank, max_rank, next_dimension, next_rank> next;
-	binomial_coefficient_check<dimension_size, rank_size> check;
+	binomial_coefficient_test_helper<min_dimension_split0, max_dimension_split0, min_rank_split0, max_rank_split0> split00;
+	binomial_coefficient_test_helper<min_dimension_split0, max_dimension_split0, min_rank_split1, max_rank_split1> split01;
+	binomial_coefficient_test_helper<min_dimension_split1, max_dimension_split1, min_rank_split0, max_rank_split0> split10;
+	binomial_coefficient_test_helper<min_dimension_split1, max_dimension_split1, min_rank_split1, max_rank_split1> split11;
 };
-
-template<int min_dimension, int max_dimension, int min_rank, int max_rank>
-struct binomial_coefficient_test_helper<min_dimension, max_dimension, min_rank, max_rank, max_dimension, max_rank>
+template<int min_dimension, int max_dimension, int rank>
+struct binomial_coefficient_test_helper<min_dimension, max_dimension, rank, rank>
 {
 	enum
 	{
-		dimension_size = max_dimension,
-		rank_size      = max_dimension,
+		min_dimension_split0 = min_dimension,
+		max_dimension_split0 = min_dimension + (max_dimension - min_dimension) / 2,
+		min_dimension_split1 = max_dimension_split0 + 1,
+		max_dimension_split1 = max_dimension,
+
+		rank_size = rank,
+	};
+
+	binomial_coefficient_test_helper<min_dimension_split0, max_dimension_split0, rank_size, rank_size> split00;
+	binomial_coefficient_test_helper<min_dimension_split1, max_dimension_split1, rank_size, rank_size> split01;
+};
+template<int dimension, int min_rank, int max_rank>
+struct binomial_coefficient_test_helper<dimension, dimension, min_rank, max_rank>
+{
+	enum
+	{
+		dimension_size = dimension,
+
+		min_rank_split0 = min_rank,
+		max_rank_split0 = min_rank + (max_rank - min_rank) / 2,
+		min_rank_split1 = max_rank_split0 + 1,
+		max_rank_split1 = max_rank,
+	};
+	binomial_coefficient_test_helper<dimension_size, dimension_size, min_rank_split0, max_rank_split0> split0;
+	binomial_coefficient_test_helper<dimension_size, dimension_size, min_rank_split1, max_rank_split1> split1;
+};
+template<int dimension, int rank>
+struct binomial_coefficient_test_helper<dimension, dimension, rank, rank>
+{
+	enum
+	{
+		dimension_size = dimension,
+		rank_size = rank,
 	};
 	binomial_coefficient_check<dimension_size, rank_size> check;
 };
 
-namespace
-{
-	// Range is split so that the compiler will accept template instanciation
-	enum
-	{
-		min_dimension0 = -20,
-		max_dimension0 = -1,
-		min_dimension1 =  0,
-		max_dimension1 = +20,
-
-		min_rank0 = -20,
-		max_rank0 = -1,
-		min_rank1 =  0,
-		max_rank1 = +20,
-	};
-	static_assert(min_ref_dimension <= min_dimension0 && max_ref_dimension >= max_dimension0 && min_ref_rank <= min_rank0 && max_ref_rank >= max_rank0, "Value has not been generated");
-	static_assert(min_ref_dimension <= min_dimension1 && max_ref_dimension >= max_dimension1 && min_ref_rank <= min_rank1 && max_ref_rank >= max_rank1, "Value has not been generated");
-	static_assert(min_dimension0 <= max_dimension0 && min_rank0 <= max_rank0, "minimum value is greater than maximum!");
-	static_assert(min_dimension1 <= max_dimension1 && min_rank1 <= max_rank1, "minimum value is greater than maximum!");
-}
-
-static binomial_coefficient_test_helper<min_dimension0, max_dimension0, min_rank0, max_rank0> unit_test00;
-static binomial_coefficient_test_helper<min_dimension0, max_dimension0, min_rank1, max_rank1> unit_test01;
-static binomial_coefficient_test_helper<min_dimension1, max_dimension1, min_rank0, max_rank0> unit_test10;
-static binomial_coefficient_test_helper<min_dimension1, max_dimension1, min_rank1, max_rank1> unit_test11;
-are_equal<sizeof(unit_test00), (max_dimension0 - min_dimension0 + 1) * (max_rank0 - min_rank0 + 1) * sizeof(char), decltype(unit_test00)> size_check00;
+static binomial_coefficient_test_helper<min_ref_dimension, max_ref_dimension, min_ref_rank, max_ref_rank> unit_test;
+are_equal<sizeof(unit_test), (max_ref_dimension - min_ref_dimension + 1) * (max_ref_rank - min_ref_rank + 1) * sizeof(char), decltype(unit_test)> size_check;
 
 #endif

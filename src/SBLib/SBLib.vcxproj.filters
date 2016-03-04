@@ -16,15 +16,6 @@
     <Filter Include="Header Files\Mathematics">
       <UniqueIdentifier>{0d0acfec-37d6-4e3c-9027-5d8508bf4ad4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\unit_tests">
-      <UniqueIdentifier>{cf654880-4185-45ba-88b9-12009bb736ce}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\unit_tests\Mathematics">
-      <UniqueIdentifier>{02f66ed3-3d1a-4be4-ae6a-21f9ebd28213}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\unit_tests\Mathematics\unit_tests">
-      <UniqueIdentifier>{0eaf5007-1d23-45bc-9fb6-2b901422d7d6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files\Traits">
       <UniqueIdentifier>{3646557a-bcee-4d1c-9220-06268478dd3c}</UniqueIdentifier>
     </Filter>
@@ -36,19 +27,10 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Mathematics\unit_tests\binomial_coefficient_tests.cpp">
-      <Filter>Source Files\unit_tests\Mathematics\unit_tests</Filter>
-    </ClCompile>
-    <ClCompile Include="Mathematics\unit_tests\clifford_traits_tests.cpp">
-      <Filter>Source Files\unit_tests\Mathematics\unit_tests</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Mathematics\binomial_coefficient.h">
       <Filter>Header Files\Mathematics</Filter>
-    </ClInclude>
-    <ClInclude Include="Mathematics\unit_tests\binomial_coefficient_ref_table.h">
-      <Filter>Source Files\unit_tests\Mathematics\unit_tests</Filter>
     </ClInclude>
     <ClInclude Include="Traits\bit_traits.h">
       <Filter>Header Files\Traits</Filter>
@@ -59,10 +41,5 @@
     <ClInclude Include="Traits\clifford_traits.h">
       <Filter>Header Files\Traits</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Mathematics\unit_tests\binomial_coefficient_maple_output.inc">
-      <Filter>Source Files\unit_tests\Mathematics\unit_tests</Filter>
-    </None>
   </ItemGroup>
 </Project>

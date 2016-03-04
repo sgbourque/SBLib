@@ -1,8 +1,12 @@
-// Temp while constexpr isnt supported, remove this when it becomes available
-#define constexpr
-
 #include <Traits/clifford_traits.h>
 
+#if defined( STATIC_UNIT_TESTS )
+#define TEST_CLIFFORD_TRAITS
+#endif
+
+#if defined( GENERATE_UNIT_TESTS )
+// Nothing to generate
+#elif defined( TEST_CLIFFORD_TRAITS )
 static_assert(alternating_traits<1,2, true>::sign == +1, "Invalid reversion conjugacy sign");
 static_assert(alternating_traits<2,1, true>::sign == -1, "Invalid reversion conjugacy sign");
 
@@ -132,3 +136,4 @@ static_assert(hodge_conjugacy_traits<(1|4), 3, true>::sign    == -1, "Invalid ho
 static_assert(hodge_conjugacy_traits<(1|4), 3, false>::sign    == -1, "Invalid hodge conjugacy sign");
 static_assert(hodge_conjugacy_traits<(1|4), 3, true>::bit_set ==  2, "Invalid hodge conjugate");
 static_assert(hodge_conjugacy_traits<(1|4), 3, false>::bit_set ==  2, "Invalid hodge conjugate");
+#endif

@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\Mathematics">
+      <UniqueIdentifier>{02f66ed3-3d1a-4be4-ae6a-21f9ebd28213}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Mathematics\binomial_coefficients">
+      <UniqueIdentifier>{0eaf5007-1d23-45bc-9fb6-2b901422d7d6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Mathematics\unit_tests\binomial_coefficient_tests.cpp">
+      <Filter>Source Files\Mathematics\binomial_coefficients</Filter>
+    </ClCompile>
+    <ClCompile Include="Mathematics\unit_tests\clifford_traits_tests.cpp">
+      <Filter>Source Files\Mathematics\binomial_coefficients</Filter>
+    </ClCompile>
+    <ClCompile Include="generate_unit_tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Mathematics\unit_tests\binomial_coefficient_ref_table.h">
+      <Filter>Source Files\Mathematics\binomial_coefficients</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Mathematics\unit_tests\binomial_coefficient_maple_output.inc">
+      <Filter>Source Files\Mathematics\binomial_coefficients</Filter>
+    </None>
+  </ItemGroup>
+</Project>

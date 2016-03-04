@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SBLib", "SBLib.vcxproj", "{77F98B45-8F8C-4892-8B8E-E73EA71B903E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SBLib_unit_tests", "SBLib_unit_tests.vcxproj", "{0632CC1E-C846-4299-9756-7E4F1AFBBC31}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -21,6 +23,14 @@ Global
 		{77F98B45-8F8C-4892-8B8E-E73EA71B903E}.Release|Win32.Build.0 = Release|Win32
 		{77F98B45-8F8C-4892-8B8E-E73EA71B903E}.Release|x64.ActiveCfg = Release|x64
 		{77F98B45-8F8C-4892-8B8E-E73EA71B903E}.Release|x64.Build.0 = Release|x64
+		{0632CC1E-C846-4299-9756-7E4F1AFBBC31}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0632CC1E-C846-4299-9756-7E4F1AFBBC31}.Debug|Win32.Build.0 = Debug|Win32
+		{0632CC1E-C846-4299-9756-7E4F1AFBBC31}.Debug|x64.ActiveCfg = Debug|x64
+		{0632CC1E-C846-4299-9756-7E4F1AFBBC31}.Debug|x64.Build.0 = Debug|x64
+		{0632CC1E-C846-4299-9756-7E4F1AFBBC31}.Release|Win32.ActiveCfg = Generate Unit Tests|Win32
+		{0632CC1E-C846-4299-9756-7E4F1AFBBC31}.Release|Win32.Build.0 = Generate Unit Tests|Win32
+		{0632CC1E-C846-4299-9756-7E4F1AFBBC31}.Release|x64.ActiveCfg = Generate Unit Tests|x64
+		{0632CC1E-C846-4299-9756-7E4F1AFBBC31}.Release|x64.Build.0 = Generate Unit Tests|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
