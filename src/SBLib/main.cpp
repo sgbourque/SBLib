@@ -35,6 +35,9 @@ public:
 	operator container_type&() { return container; }
 	operator const container_type&() const { return container; }
 
+	scalar_t&  operator[](const size_t index) { return container[index]; }
+	scalar_t&& operator[](const size_t index) const { return container[index]; }
+
 	container_type container;
 };
 
@@ -63,6 +66,9 @@ public:
 	operator container_type&() { return container; }
 	operator const container_type&() const { return container; }
 
+	scalar_type&  operator[](const size_t index) { return container.f[index]; }
+	const scalar_type& operator[](const size_t index) const { return container.f[index]; }
+
 	container_type container;
 };
 #endif
@@ -72,12 +78,42 @@ struct vector_t
 {
 private:
 	template<size_t subspace_mask>
-	constexpr scalar_t get_helper()
+	struct get_traits_helper
 	{
-		return coordinates.container[traits::get_bit_index<subspace_mask>()];
+		typedef scalar_t& reference_type;
+		typedef const scalar_t& const_reference_type;
+	};
+	template<>
+	struct get_traits_helper<0>
+	{
+		typedef scalar_t reference_type;
+		typedef scalar_t const_reference_type;
+	};
+	template<size_t subspace_mask>
+	struct get_traits
+	{
+		static const size_t mask = is_power_of_two(subspace_mask) ? (subspace_mask & space_mask) : 0;
+		typedef typename get_traits_helper<mask>::reference_type reference_type;
+		typedef typename get_traits_helper<mask>::const_reference_type const_reference_type;
+	};
+
+	template<size_t subspace_mask>
+	constexpr typename get_traits<subspace_mask>::reference_type get_helper()
+	{
+		return coordinates[traits::get_bit_index<subspace_mask>()];
 	}
 	template<>
 	constexpr scalar_t get_helper<0>()
+	{
+		return scalar_t(0);
+	}
+	template<size_t subspace_mask>
+	constexpr typename get_traits<subspace_mask>::const_reference_type get_helper() const
+	{
+		return coordinates[traits::get_bit_index<subspace_mask>()];
+	}
+	template<>
+	constexpr scalar_t get_helper<0>() const
 	{
 		return scalar_t(0);
 	}
@@ -97,9 +133,19 @@ public:
 	explicit vector_t(scalars&&... coords) : coordinates{std::forward<scalars>(coords)...} {}
 
 	template<size_t subspace_mask>
-	constexpr scalar_t get()
+	constexpr typename get_traits<subspace_mask>::reference_type get()
 	{
 		return get_helper<is_power_of_two(subspace_mask) ? (subspace_mask & space_mask) : 0>();
+	}
+	template<size_t subspace_mask>
+	constexpr typename get_traits<subspace_mask>::const_reference_type get() const
+	{
+		return get_helper<is_power_of_two(subspace_mask) ? (subspace_mask & space_mask) : 0>();
+	}
+	template<size_t subspace_mask>
+	constexpr scalar_t cget() const
+	{
+		return get<subspace_mask>();
 	}
 
 	coordinates_type coordinates;
@@ -149,27 +195,35 @@ int main()
 		e14 = (1 << 14),	e15 = (1 << 15),
 	};
 
-	vector_t<float, e0 | e2 | e7 | e15> test { 1.f, 2.f, 3.f, 4.f };
-	vector_t<float, e0 | e2 | e7 | e15> test2{ -1.f, -2.f, -3.f, -4.f };
+	vector_t<float, e0 | e2 | e7 | e15> test;
+	vector_t<float, e0 | e2 | e7 | e15> test2;
 
 	float coeff;
 	std::cin >> coeff;
+	std::cin >> test.get<e0>();
+	std::cin >> test.get<e2>();
+	std::cin >> test.get<e7>();
+	std::cin >> test.get<e15>();
+	std::cin >> test2.get<e0>();
+	std::cin >> test2.get<e2>();
+	std::cin >> test2.get<e7>();
+	std::cin >> test2.get<e15>();
 
 	auto test3 = coeff * test + test2;
 	static_assert( sizeof(test) == 4 * sizeof(float), "vector size is incorrect..." );
 	std::cin.get();
 
 	std::cout << "("
-		<< test3.get<e0>() << ", "
-	    << test3.get<e2>() << ", "
-		<< test3.get<e7>() << ", "
-		<< test3.get<e15>()
+		<< test3.cget<e0>() << ", "
+	    << test3.cget<e2>() << ", "
+		<< test3.cget<e7>() << ", "
+		<< test3.cget<e15>()
 		<< ")" << std::endl;
 
 	std::cout << "0 = "
-		<< test3.get<0>()       << " = "
-		<< test3.get<e1 | e2>() << " = "
-		<< test3.get<e3>()
+		<< test3.cget<0>()       << " = "
+		<< test3.cget<e1 | e2>() << " = "
+		<< test3.cget<e3>()
 		<< std::endl;
 
 	std::cin.get();
