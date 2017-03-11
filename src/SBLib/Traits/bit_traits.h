@@ -50,7 +50,6 @@ public:
 		};
 	};
 
-/*
 	template<size_t index>
 	static constexpr size_t get_set_bit()
 	{
@@ -61,7 +60,6 @@ public:
 	{
 		return bit_index<bit>::value;
 	}
-*/
 };
 template<>
 struct bit_traits<0>
@@ -86,7 +84,6 @@ public:
 	{
 	};
 
-/*
 	template<size_t index>
 	static constexpr size_t get_set_bit()
 	{
@@ -97,7 +94,6 @@ public:
 	{
 		return bit_index<bit>::value;
 	}
-*/
 };
 
 template<class traits>

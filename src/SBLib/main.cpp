@@ -3,35 +3,175 @@
 #include <Traits/bit_traits.h>
 #include <Traits/clifford_traits.h>
 
-#include <array>
 
-template<size_t _dimension_size>
-struct euclidian_space
+template<typename type_t>
+constexpr bool is_power_of_two( const type_t& value )
+{
+	static_assert( std::is_integral<type_t>::value, "type is not integral." );
+	return value && ((value & (value - 1)) == 0);
+}
+
+
+#include <array>
+#define DIRECTX_VECTOR
+
+
+template<typename scalar_t, size_t dimension>
+struct coordinates_t
 {
 private:
-	enum
-	{
-		space_mask = (1 << _dimension_size) - 1,
-	};
-	typedef bit_traits<space_mask> traits;
-	static_assert(traits::population_count == _dimension_size, "dimension does not match");
-
+	typedef bit_traits<(1 << dimension) - 1> traits;
 public:
 	enum
 	{
-		dimension_size = _dimension_size,
+		dimension_size = traits::population_count,
 	};
+	typedef scalar_t scalar_type;
+	typedef std::array<scalar_type, dimension_size> container_type;
+
+	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v): container(v.container) {};
+	template<typename... scalars> explicit coordinates_t(scalars&&... coords): container{std::forward<scalars>(coords)...} {}
+
+	operator container_type&() { return container; }
+	operator const container_type&() const { return container; }
+
+	container_type container;
 };
-euclidian_space<3> test;
 
-// TODO : use SSE & other optimizations as needed
 
-#if 0
+#if defined( DIRECTX_VECTOR )
+#include <DirectXMath.h>
+template<>
+struct coordinates_t<float, 4>
+{
+private:
+	typedef bit_traits<(1 << 4) - 1> traits;
+public:
+	enum
+	{
+		dimension_size = traits::population_count,
+	};
+	typedef float scalar_type;
+	typedef DirectX::XMVECTORF32 container_type;
+	typedef DirectX::XMVECTOR    intermediate_type;
+
+	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v) : container(v.container) {};
+	explicit coordinates_t(const container_type& v) : container(v) {};
+	explicit coordinates_t(const intermediate_type& v) { container.v = v; };
+	template<typename... scalars> explicit coordinates_t(scalars&&... coords): container{std::forward<scalars>(coords)...} {}
+
+	operator container_type&() { return container; }
+	operator const container_type&() const { return container; }
+
+	container_type container;
+};
+#endif
+
+template<typename scalar_t, size_t space_mask>
+struct vector_t
+{
+private:
+	template<size_t subspace_mask>
+	constexpr scalar_t get_helper()
+	{
+		return coordinates.container[traits::get_bit_index<subspace_mask>()];
+	}
+	template<>
+	constexpr scalar_t get_helper<0>()
+	{
+		return scalar_t(0);
+	}
+
+public:
+	typedef bit_traits<space_mask> traits;
+	enum
+	{
+		dimension_size = traits::population_count,
+	};
+	typedef coordinates_t<scalar_t, dimension_size> coordinates_type;
+
+	vector_t(const vector_t<scalar_t, space_mask>& v) : coordinates(v.coordinates) {};
+	explicit vector_t(const coordinates_type& v) : coordinates(v) {};
+
+	template<typename... scalars>
+	explicit vector_t(scalars&&... coords) : coordinates{std::forward<scalars>(coords)...} {}
+
+	template<size_t subspace_mask>
+	constexpr scalar_t get()
+	{
+		return get_helper<is_power_of_two(subspace_mask) ? (subspace_mask & space_mask) : 0>();
+	}
+
+	coordinates_type coordinates;
+};
+
+
+template<typename scalar_t, size_t space_mask>
+vector_t<scalar_t, space_mask> operator *(const scalar_t scale, const vector_t<scalar_t, space_mask>& v)
+{
+	const auto coordinates = v.coordinates.container * scale;
+	return vector_t<scalar_t, space_mask>(coordinates);
+}
+template<typename scalar_t, size_t space_mask>
+vector_t<scalar_t, space_mask> operator *(const vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
+{
+	return scale * u;
+}
+template<typename scalar_t, size_t space_mask>
+vector_t<scalar_t, space_mask> operator +(const vector_t<scalar_t, space_mask>& u, const vector_t<scalar_t, space_mask>& v)
+{
+	const auto coordinates = u.coordinates.container + v.coordinates.container;
+	return vector_t<scalar_t, space_mask>(coordinates);
+}
+
+
+//template<typename scalar_t, size_t subspace_mask0, ...>
+//struct multivector_t
+//{
+//
+//};
+
+#if 1
 
 #include <iostream>
 #include <iomanip>
 int main()
 {
+	enum
+	{
+		e0  = (1 << 0), 	e1  = (1 << 1),
+		e2  = (1 << 2), 	e3  = (1 << 3),
+		e4  = (1 << 4), 	e5  = (1 << 5),
+		e6  = (1 << 6), 	e7  = (1 << 7),
+		e8  = (1 << 8), 	e9  = (1 << 9),
+		e10 = (1 << 10),	e11 = (1 << 11),
+		e12 = (1 << 12),	e13 = (1 << 13),
+		e14 = (1 << 14),	e15 = (1 << 15),
+	};
+
+	vector_t<float, e0 | e2 | e7 | e15> test { 1.f, 2.f, 3.f, 4.f };
+	vector_t<float, e0 | e2 | e7 | e15> test2{ -1.f, -2.f, -3.f, -4.f };
+
+	float coeff;
+	std::cin >> coeff;
+
+	auto test3 = coeff * test + test2;
+	static_assert( sizeof(test) == 4 * sizeof(float), "vector size is incorrect..." );
+	std::cin.get();
+
+	std::cout << "("
+		<< test3.get<e0>() << ", "
+	    << test3.get<e2>() << ", "
+		<< test3.get<e7>() << ", "
+		<< test3.get<e15>()
+		<< ")" << std::endl;
+
+	std::cout << "0 = "
+		<< test3.get<0>()       << " = "
+		<< test3.get<e1 | e2>() << " = "
+		<< test3.get<e3>()
+		<< std::endl;
+
 	std::cin.get();
 }
 
@@ -43,7 +183,6 @@ int main()
 {
 	typedef bit_traits<0xAB> traits;
 	std::cout << traits::value << " (" << traits::population_count << ")";
-
 	std::cout << " -> (";
 	static_for_each<0, traits::population_count, get_bit_helper<traits>, increment_bit_index_helper<traits>>::iterate(
 		[](size_t value, size_t cur_loop) -> void
@@ -53,7 +192,6 @@ int main()
 		}
 	);
 	std::cout << ")";
-
 	std::cout << " ~ (";
 	static_for_each<traits::get_bit<0>::value, traits::get_bit<traits::population_count>::value, get_bit_index_helper<traits>, next_bit_helper<traits>>::iterate(
 		[](size_t value, size_t cur_loop) -> void
@@ -64,19 +202,34 @@ int main()
 	);
 	std::cout << ")" << std::endl;
 	
-	std::cout << "((e2 ^ e0) ^ e1) = "
-		<< alternating_traits<(1<<2)|(1<<0), (1<<1)>::sign
+	enum
+	{
+		e0 = (1 << 0),
+		e1 = (1 << 1),
+		e2 = (1 << 2),
+		e3 = (1 << 3),
+		e4 = (1 << 4),
+		e5 = (1 << 5),
+	};
+	std::cout << "((e0 ^ e2) ^ e1) \n\t= "
+		<< alternating_traits<(e2 ^ e0), e1>::sign
+		<< " * (e0 ^ e1 ^ e2) \n\t= "
+		<< -alternating_traits<(e0 ^ e2), e1, false>::sign
 		<< " * (e2 ^ e1 ^ e0)"
 		<< std::endl;
 
-	std::cout << "((e5 ^ e3 ^ e2) ^ (e4 ^ e0)) = "
-		<< alternating_traits<(1<<5)|(1<<3)|(1<<2), (1<<4)|(1<<0)>::sign
-		<< " * (e5 ^ e4 ^ e3 ^ e2 ^ e0)"
+	std::cout << "((e5 ^ e3 ^ e2) ^ (e4 ^ e0)) \n\t= "
+		<< alternating_traits<(e5 ^ e3 ^ e2), (e4 ^ e0)>::sign
+		<< " * (e5 ^ e4 ^ e3 ^ e2 ^ e0) \n\t= "
+		<< +alternating_traits<(e2 ^ e3 ^ e5), (e0 ^ e4), false>::sign
+		<< " * (e0 ^ e2 ^ e3 ^ e4 ^ e5)"
 		<< std::endl;
 
-	std::cout << "((e5 ^ e3 ^ e2) ^ (e5 ^ e1)) = "
-		<< alternating_traits<(1<<5)|(1<<3)|(1<<2), (1<<5)|(1<<1)>::sign
-		<< " * (e5 ^ e5 ^ e3 ^ e2 ^ e1)"
+	std::cout << "((e5 ^ e3 ^ e2) ^ (e5 ^ e1)) \n\t= "
+		<< alternating_traits<(e5 ^ e3 ^ e2), (e5 ^ e1)>::sign
+		<< " * (e5 ^ e5 ^ e3 ^ e2 ^ e1) \n\t= "
+		<< +alternating_traits<(e2 ^ e3 ^ e5), (e1 ^ e5), false>::sign
+		<< " * (e1 ^ e2 ^ e3 ^ e5 ^ e5)"
 		<< std::endl;
 
 	std::cin.get();
