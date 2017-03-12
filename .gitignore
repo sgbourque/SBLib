@@ -5,6 +5,7 @@
 *.suo
 *.user
 *.sln.docstates
+*.db
 
 # Build results
 [Dd]ebug/
@@ -188,5 +189,7 @@ GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
 *.opendb
-/SBLib/
-/.vs/*
+
+.vs/*
+*.VS.db*
+*.VC.db*
