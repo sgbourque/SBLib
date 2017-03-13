@@ -400,16 +400,16 @@ struct uniform_multimodule_t
 };
 
 template<typename module_type>
-using scalar_t = uniform_multimodule_t<module_type, 0>;
+using scalar_type = uniform_multimodule_t<module_type, 0>;
 
 template<typename module_type>
-using vector_t = uniform_multimodule_t<module_type, 1>;
+using vector_type = uniform_multimodule_t<module_type, 1>;
 
 template<typename module_type>
-using pseudovector_t = uniform_multimodule_t<module_type, module_type::dimension - 1>;
+using pseudovector_type = uniform_multimodule_t<module_type, module_type::dimension - 1>;
 
 template<typename module_type>
-using pseudoscalar_t = uniform_multimodule_t<module_type, module_type::dimension>;
+using pseudoscalar_type = uniform_multimodule_t<module_type, module_type::dimension>;
 
 
 //
