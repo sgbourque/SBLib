@@ -67,6 +67,17 @@ coordinates_t<scalar_t, dimension> operator +(const coordinates_t<scalar_t, dime
 	return std::move(value);
 }
 
+template<typename scalar_t, size_t dimension>
+const scalar_t* begin(const coordinates_t<scalar_t, dimension>& u)
+{
+	return &*u.container.begin();
+}
+template<typename scalar_t, size_t dimension>
+const scalar_t* end(const coordinates_t<scalar_t, dimension>& u)
+{
+	return &*u.container.end();
+}
+
 #if defined( DIRECTX_VECTOR )
 #include <DirectXMath.h>
 template<>
@@ -113,6 +124,15 @@ coordinates_t<float, 4> operator *(const coordinates_t<float, 4>& u, const float
 coordinates_t<float, 4> operator +(const coordinates_t<float, 4>& u, const coordinates_t<float, 4>& v)
 {
 	return std::move(u.container + v.container);
+}
+
+const float* begin(const coordinates_t<float, 4>& u)
+{
+	return &u.container.f[0];
+}
+const float* end(const coordinates_t<float, 4>& u)
+{
+	return &u.container.f[4];
 }
 #endif
 
@@ -222,11 +242,54 @@ vector_t<scalar_t, space_mask> operator +(const vector_t<scalar_t, space_mask>& 
 //
 //};
 
+
+
+#include <sstream>
+#include <string>
+
+template<typename type_t>
+struct latex_t;
+template<typename type_t>
+struct raw_t;
+
+template<typename field_t, size_t dimension>
+struct latex_t<vector_t<field_t, dimension>>
+{
+	static constexpr std::string prefix() { return "\\left("; }
+	static constexpr std::string delimiter() { return ",\\,"; }
+	static constexpr std::string postfix() { return "\\right)"; }
+};
+template<typename field_t, size_t dimension>
+struct raw_t<vector_t<field_t, dimension>>
+{
+	static constexpr std::string prefix() { return "{"; }
+	static constexpr std::string delimiter() { return ", "; }
+	static constexpr std::string postfix() { return "}"; }
+};
+
+template<template<typename> class traits, typename field_type, size_t dimension_size>
+std::string to_string(const vector_t<field_type, dimension_size>& vec)
+{
+	typedef vector_t<field_type, dimension_size> type_t;
+	typedef traits<type_t> traits_t;
+
+	std::string delimiter;
+	std::stringstream ss;
+	ss << traits_t::prefix();
+	for (const auto& value : vec.coordinates)
+		(ss << delimiter << value), (delimiter = traits_t::delimiter());
+	ss << traits_t::postfix();
+
+	return ss.str();
+}
+
+
 #if 1
 
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+template<typename type_t> using out_t = raw_t<type_t>;
 int main()
 {
 	enum
@@ -244,17 +307,31 @@ int main()
 	vector_t<float, e0 | e2 | e7 | e15> test;
 	vector_t<float, e0 | e2 | e7 | e15> test2;
 
-	float coeff;
+	float coeff1, coeff2;
+
+	const std::string input_filename = "../../tmp/test_input.in";
 	{
-		const std::string filename = "../../tmp/test_input.in";
-		auto file = std::fstream(filename, std::ios_base::in | std::ios_base::_Nocreate);
+		auto file = std::fstream(input_filename, std::ios_base::in | std::ios_base::_Nocreate);
+
+		static const std::string version_string = "version";
+		static const size_t version = 0;
+		if (file.is_open())
+		{
+			std::string file_version_string;
+			size_t file_version;
+			file >> file_version_string >> file_version;
+			if (file_version_string != version_string || file_version != version)
+				file.close();
+		}
+
 		std::istream& in = file.is_open() ? file : std::cin;
 
-		in >> coeff;
+		in >> coeff1 >> coeff2;
 		in >> test.get<e0>();
 		in >> test.get<e2>();
 		in >> test.get<e7>();
 		in >> test.get<e15>();
+
 		in >> test2.get<e0>();
 		in >> test2.get<e2>();
 		in >> test2.get<e7>();
@@ -262,10 +339,11 @@ int main()
 
 		if (!file.is_open())
 		{
-			file.open(filename, std::ios_base::out);
+			file.open(input_filename, std::ios_base::out);
 			if (file.is_open())
 			{
-				file << coeff;
+				file << version_string << " " << version << std::endl;
+				file << coeff1 << " " << coeff2;
 				file << " " << test.get<e0>();
 				file << " " << test.get<e2>();
 				file << " " << test.get<e7>();
@@ -278,9 +356,9 @@ int main()
 		}
 	}
 
-	auto test3 = coeff * test * 2.0f + test2;
+	auto test3 = coeff1 * test * coeff2 + test2;
 	static_assert( sizeof(test) == 4 * sizeof(float), "vector size is incorrect..." );
-	std::cout << "testing..." << std::endl;
+	std::cout << "testing... (press 'd' to delete input file)" << std::endl;
 
 	std::cout << "("
 		<< test3.cget<e0>() << ", "
@@ -295,7 +373,11 @@ int main()
 		<< test3.get<e3>()
 		<< std::endl;
 
-	std::cin.get();
+	std::cout << to_string<out_t>(test3) << std::endl;
+
+	int data = std::cin.get();
+	if (data == 'd')
+		std::remove(input_filename.c_str());
 }
 
 #elif 1
