@@ -4,16 +4,17 @@
 #include <Traits/clifford_traits.h>
 
 
+#include <array>
+#define DIRECTX_VECTOR
+
 template<typename type_t>
-constexpr bool is_power_of_two( const type_t& value )
+constexpr bool is_power_of_two(const type_t& value)
 {
-	static_assert( std::is_integral<type_t>::value, "type is not integral." );
+	static_assert(std::is_integral<type_t>::value, "type is not integral.");
 	return value && ((value & (value - 1)) == 0);
 }
 
 
-#include <array>
-#define DIRECTX_VECTOR
 
 
 template<typename scalar_t, size_t dimension>
@@ -26,21 +27,45 @@ public:
 	{
 		dimension_size = traits::population_count,
 	};
+	static_assert( dimension_size == dimension, "dimension mismatch" );
 	typedef scalar_t scalar_type;
 	typedef std::array<scalar_type, dimension_size> container_type;
 
+	coordinates_t() = default;
 	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v): container(v.container) {};
-	template<typename... scalars> explicit coordinates_t(scalars&&... coords): container{std::forward<scalars>(coords)...} {}
+
+	explicit coordinates_t(const container_type& v) : container(v) {};
+	template<typename... scalars> explicit coordinates_t(scalar_type&& first, scalars&&... coords) : container{ first, std::forward<scalars>(coords)... } {}
+
+	coordinates_t(container_type&& v) : container(v) {}
 
 	operator container_type&() { return container; }
 	operator const container_type&() const { return container; }
 
-	scalar_t&  operator[](const size_t index) { return container[index]; }
-	scalar_t&& operator[](const size_t index) const { return container[index]; }
+	scalar_t& operator[](const size_t index) { return container[index]; }
+	const scalar_t& operator[](const size_t index) const { return container[index]; }
 
 	container_type container;
 };
-
+template<typename scalar_t, size_t dimension>
+coordinates_t<scalar_t, dimension> operator *(const float& scale, const coordinates_t<scalar_t, dimension>& v)
+{
+	coordinates_t<scalar_t, dimension> value;
+	std::transform(v.container.begin(), v.container.end(), value.container.begin(), [&scale](const auto& u) -> auto { return u * scale; });
+	return std::move(value);
+}
+template<typename scalar_t, size_t dimension>
+coordinates_t<scalar_t, dimension> operator *(const coordinates_t<scalar_t, dimension>& u, const float& scale)
+{
+	return std::move(scale * u);
+}
+template<typename scalar_t, size_t dimension>
+coordinates_t<scalar_t, dimension> operator +(const coordinates_t<scalar_t, dimension>& u, const coordinates_t<scalar_t, dimension>& v)
+{
+	coordinates_t<scalar_t, dimension> value;
+	std::transform(u.container.begin(), u.container.end(), v.container.begin(), value.container.begin(), [](const auto& a, const auto& b) -> auto { return a + b; });
+	return std::move(value);
+}
 
 #if defined( DIRECTX_VECTOR )
 #include <DirectXMath.h>
@@ -58,10 +83,15 @@ public:
 	typedef DirectX::XMVECTORF32 container_type;
 	typedef DirectX::XMVECTOR    intermediate_type;
 
-	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v) : container(v.container) {};
+	coordinates_t() = default;
+	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v) = default;
+
 	explicit coordinates_t(const container_type& v) : container(v) {};
 	explicit coordinates_t(const intermediate_type& v) { container.v = v; };
-	template<typename... scalars> explicit coordinates_t(scalars&&... coords): container{std::forward<scalars>(coords)...} {}
+	template<typename... scalars> explicit coordinates_t(scalar_type&& first, scalars&&... coords): container{first, std::forward<scalars>(coords)...} {}
+
+	coordinates_t(container_type&& v) : container(v) {}
+	coordinates_t(intermediate_type&& v) { container.v = std::move(v); }
 
 	operator container_type&() { return container; }
 	operator const container_type&() const { return container; }
@@ -71,6 +101,19 @@ public:
 
 	container_type container;
 };
+
+coordinates_t<float, 4> operator *(const float& scale, const coordinates_t<float, 4>& v)
+{
+	return std::move(v.container * scale);
+}
+coordinates_t<float, 4> operator *(const coordinates_t<float, 4>& u, const float& scale)
+{
+	return std::move(scale * u);
+}
+coordinates_t<float, 4> operator +(const coordinates_t<float, 4>& u, const coordinates_t<float, 4>& v)
+{
+	return std::move(u.container + v.container);
+}
 #endif
 
 template<typename scalar_t, size_t space_mask>
@@ -124,26 +167,30 @@ public:
 	{
 		dimension_size = traits::population_count,
 	};
-	typedef coordinates_t<scalar_t, dimension_size> coordinates_type;
+	typedef typename coordinates_t<scalar_t, dimension_size>              coordinates_type;
+	typedef typename coordinates_t<scalar_t, dimension_size>::scalar_type scalar_type;
 
-	vector_t(const vector_t<scalar_t, space_mask>& v) : coordinates(v.coordinates) {};
+	vector_t() = default;
+	vector_t(const vector_t<scalar_t, space_mask>& v) = default;
 	explicit vector_t(const coordinates_type& v) : coordinates(v) {};
+	explicit vector_t(coordinates_type&& v) : coordinates(v) {};
 
 	template<typename... scalars>
-	explicit vector_t(scalars&&... coords) : coordinates{std::forward<scalars>(coords)...} {}
+	explicit vector_t(scalar_t&& first, scalars&&... coords) : coordinates{first, std::forward<scalars>(coords)...} {}
+
 
 	template<size_t subspace_mask>
 	constexpr typename get_traits<subspace_mask>::reference_type get()
 	{
-		return get_helper<is_power_of_two(subspace_mask) ? (subspace_mask & space_mask) : 0>();
+		return get_helper<get_traits<subspace_mask>::mask>();
 	}
 	template<size_t subspace_mask>
 	constexpr typename get_traits<subspace_mask>::const_reference_type get() const
 	{
-		return get_helper<is_power_of_two(subspace_mask) ? (subspace_mask & space_mask) : 0>();
+		return get_helper<get_traits<subspace_mask>::mask>();
 	}
 	template<size_t subspace_mask>
-	constexpr scalar_t cget() const
+	constexpr typename get_traits<subspace_mask>::const_reference_type cget() const
 	{
 		return get<subspace_mask>();
 	}
@@ -153,21 +200,19 @@ public:
 
 
 template<typename scalar_t, size_t space_mask>
-vector_t<scalar_t, space_mask> operator *(const scalar_t scale, const vector_t<scalar_t, space_mask>& v)
+vector_t<scalar_t, space_mask> operator *(const scalar_t& scale, const vector_t<scalar_t, space_mask>& v)
 {
-	const auto coordinates = v.coordinates.container * scale;
-	return vector_t<scalar_t, space_mask>(coordinates);
+	return vector_t<scalar_t, space_mask>(std::move(v.coordinates * scale));
 }
 template<typename scalar_t, size_t space_mask>
 vector_t<scalar_t, space_mask> operator *(const vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
 {
-	return scale * u;
+	return std::move(scale * u);
 }
 template<typename scalar_t, size_t space_mask>
 vector_t<scalar_t, space_mask> operator +(const vector_t<scalar_t, space_mask>& u, const vector_t<scalar_t, space_mask>& v)
 {
-	const auto coordinates = u.coordinates.container + v.coordinates.container;
-	return vector_t<scalar_t, space_mask>(coordinates);
+	return vector_t<scalar_t, space_mask>(std::move(u.coordinates + v.coordinates));
 }
 
 
@@ -181,6 +226,7 @@ vector_t<scalar_t, space_mask> operator +(const vector_t<scalar_t, space_mask>& 
 
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 int main()
 {
 	enum
@@ -199,31 +245,54 @@ int main()
 	vector_t<float, e0 | e2 | e7 | e15> test2;
 
 	float coeff;
-	std::cin >> coeff;
-	std::cin >> test.get<e0>();
-	std::cin >> test.get<e2>();
-	std::cin >> test.get<e7>();
-	std::cin >> test.get<e15>();
-	std::cin >> test2.get<e0>();
-	std::cin >> test2.get<e2>();
-	std::cin >> test2.get<e7>();
-	std::cin >> test2.get<e15>();
+	{
+		const std::string filename = "../../tmp/test_input.in";
+		auto file = std::fstream(filename, std::ios_base::in | std::ios_base::_Nocreate);
+		std::istream& in = file.is_open() ? file : std::cin;
 
-	auto test3 = coeff * test + test2;
+		in >> coeff;
+		in >> test.get<e0>();
+		in >> test.get<e2>();
+		in >> test.get<e7>();
+		in >> test.get<e15>();
+		in >> test2.get<e0>();
+		in >> test2.get<e2>();
+		in >> test2.get<e7>();
+		in >> test2.get<e15>();
+
+		if (!file.is_open())
+		{
+			file.open(filename, std::ios_base::out);
+			if (file.is_open())
+			{
+				file << coeff;
+				file << " " << test.get<e0>();
+				file << " " << test.get<e2>();
+				file << " " << test.get<e7>();
+				file << " " << test.get<e15>();
+				file << " " << test2.get<e0>();
+				file << " " << test2.get<e2>();
+				file << " " << test2.get<e7>();
+				file << " " << test2.get<e15>();
+			}
+		}
+	}
+
+	auto test3 = coeff * test * 2.0f + test2;
 	static_assert( sizeof(test) == 4 * sizeof(float), "vector size is incorrect..." );
-	std::cin.get();
+	std::cout << "testing..." << std::endl;
 
 	std::cout << "("
 		<< test3.cget<e0>() << ", "
-	    << test3.cget<e2>() << ", "
-		<< test3.cget<e7>() << ", "
-		<< test3.cget<e15>()
+	    << test3.get<e2>() << ", "
+		<< test3.get<e7>() << ", "
+		<< test3.get<e15>()
 		<< ")" << std::endl;
 
 	std::cout << "0 = "
 		<< test3.cget<0>()       << " = "
-		<< test3.cget<e1 | e2>() << " = "
-		<< test3.cget<e3>()
+		<< test3.get<e1 | e2>() << " = "
+		<< test3.get<e3>()
 		<< std::endl;
 
 	std::cin.get();

@@ -191,5 +191,7 @@ ModelManifest.xml
 *.opendb
 
 .vs/*
+/tmp/*
+/bin/*
 *.VS.db*
 *.VC.db*
