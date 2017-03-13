@@ -49,14 +49,14 @@ public:
 	container_type container;
 };
 template<typename scalar_t, size_t dimension>
-coordinates_t<scalar_t, dimension> operator *(const float& scale, const coordinates_t<scalar_t, dimension>& v)
+coordinates_t<scalar_t, dimension> operator *(const scalar_t& scale, const coordinates_t<scalar_t, dimension>& v)
 {
 	coordinates_t<scalar_t, dimension> value;
 	std::transform(v.container.begin(), v.container.end(), value.container.begin(), [&scale](const auto& u) -> auto { return u * scale; });
 	return std::move(value);
 }
 template<typename scalar_t, size_t dimension>
-coordinates_t<scalar_t, dimension> operator *(const coordinates_t<scalar_t, dimension>& u, const float& scale)
+coordinates_t<scalar_t, dimension> operator *(const coordinates_t<scalar_t, dimension>& u, const scalar_t& scale)
 {
 	return std::move(scale * u);
 }
@@ -305,8 +305,8 @@ int main()
 		e14 = (1 << 14),	e15 = (1 << 15),
 	};
 
-	typedef vector_t<float, e0 | e2 | e7 | e15>       vector_type1;
-	typedef vector_t<float, e0 | e1 | e2 | e7 | e13 | e15> vector_type2;
+	typedef vector_t<float, e0 | e2 | e7 | e15>                  vector_type1;
+	typedef vector_t<long double, e0 | e1 | e2 | e7 | e13 | e15> vector_type2;
 	vector_type1 test1{-1.0f,-1.0f,-1.0f,-1.0f}; // sets all 4 components
 	vector_type1 test2;
 	vector_type2 test3{-1.0f,-1.0f}; // only sets components for e0 and e1, all other being 0.
@@ -314,7 +314,7 @@ int main()
 	static_assert(sizeof(vector_type1) == vector_type1::dimension_size * sizeof(vector_type1::scalar_type), "vector size is incorrect...");
 	static_assert(sizeof(vector_type2) == vector_type2::dimension_size * sizeof(vector_type2::scalar_type), "vector size is incorrect...");
 
-	float coeff1, coeff2;
+	vector_type1::scalar_type coeff1, coeff2;
 
 	const std::string input_filename = "../../tmp/test_input.in";
 	{
@@ -376,8 +376,9 @@ int main()
 		test4.get<e15>() = test2.cget<e15>();
 	}
 
+	vector_type2::scalar_type coeff1d = coeff1, coeff2d = coeff2;
 	auto test_result1 = coeff1 * test1 * coeff2 + test2;
-	auto test_result2 = coeff1 * test3 * coeff2 + test4;
+	auto test_result2 = coeff1d * test3 * coeff2d + test4;
 	//auto test_result3 = coeff1 * test1 * coeff2 + test4; // this will fail compilation (vector types are incompatible) ... eventually this should be fixed as it all fits into destination
 	std::cout << "testing... (press 'd' to delete input file)" << std::endl;
 
