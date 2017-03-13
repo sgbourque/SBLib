@@ -32,7 +32,8 @@ public:
 	typedef std::array<scalar_type, dimension_size> container_type;
 
 	coordinates_t() : container{} {};
-	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v): container(v.container) {};
+	coordinates_t(coordinates_t<scalar_type, dimension_size>&& v): container(std::move(v.container)) {};
+	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v) : container(v.container) {};
 
 	explicit coordinates_t(const container_type& v) : container(v) {};
 	template<typename... scalars> explicit coordinates_t(scalar_type&& first, scalars&&... coords) : container{ first, std::forward<scalars>(coords)... } {}
@@ -196,7 +197,7 @@ public:
 	explicit vector_t(coordinates_type&& v) : coordinates(v) {};
 
 	template<typename... scalars>
-	explicit vector_t(scalar_t&& first, scalars&&... coords) : coordinates{first, std::forward<scalars>(coords)...} {}
+	explicit vector_t(scalars&&... coords) : coordinates{std::forward<scalars>(coords)...} {}
 
 
 	template<size_t subspace_mask>
@@ -305,10 +306,10 @@ int main()
 	};
 
 	typedef vector_t<float, e0 | e2 | e7 | e15>       vector_type1;
-	typedef vector_t<float, e0 | e2 | e7 | e13 | e15> vector_type2;
-	vector_type1 test1;
+	typedef vector_t<float, e0 | e1 | e2 | e7 | e13 | e15> vector_type2;
+	vector_type1 test1{-1.0f,-1.0f,-1.0f,-1.0f}; // sets all 4 components
 	vector_type1 test2;
-	vector_type2 test3;
+	vector_type2 test3{-1.0f,-1.0f}; // only sets components for e0 and e1, all other being 0.
 	vector_type2 test4;
 	static_assert(sizeof(vector_type1) == vector_type1::dimension_size * sizeof(vector_type1::scalar_type), "vector size is incorrect...");
 	static_assert(sizeof(vector_type2) == vector_type2::dimension_size * sizeof(vector_type2::scalar_type), "vector size is incorrect...");
@@ -350,25 +351,29 @@ int main()
 			{
 				file << version_string << " " << version << std::endl;
 				file << coeff1 << " " << coeff2;
-				file << " " << test1.get<e0>();
-				file << " " << test1.get<e2>();
-				file << " " << test1.get<e7>();
-				file << " " << test1.get<e15>();
-				file << " " << test2.get<e0>();
-				file << " " << test2.get<e2>();
-				file << " " << test2.get<e7>();
-				file << " " << test2.get<e15>();
+				file << " " << test1.cget<e0>();
+				file << " " << test1.cget<e2>();
+				file << " " << test1.cget<e7>();
+				file << " " << test1.cget<e15>();
+				file << " " << test2.cget<e0>();
+				file << " " << test2.cget<e2>();
+				file << " " << test2.cget<e7>();
+				file << " " << test2.cget<e15>();
 			}
 		}
 
-		test3.get<e0>()  = test1.get<e0>();
-		test3.get<e2>()  = test1.get<e2>();
-		test3.get<e7>()  = test1.get<e7>();
-		test3.get<e15>() = test1.get<e15>();
-		test4.get<e0>()  = test2.get<e0>();
-		test4.get<e2>()  = test2.get<e2>();
-		test4.get<e7>()  = test2.get<e7>();
-		test4.get<e15>() = test2.get<e15>();
+		test3.get<e0>()  = test1.cget<e0>();
+		//test3.get<e1>()  = test1.cget<e1>(); // this would be fine and would not have any effect! not doing it just to check explicitly data set in constructor
+		test3.get<e2>()  = test1.cget<e2>();
+		test3.get<e7>()  = test1.cget<e7>();
+		//test3.get<e13>() = test1.get<e13>(); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
+		test3.get<e15>() = test1.cget<e15>();
+		test4.get<e0>()  = test2.cget<e0>();
+		//test4.get<e1>() = test2.cget<e1>(); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
+		test4.get<e2>()  = test2.cget<e2>();
+		test4.get<e7>()  = test2.cget<e7>();
+		test4.get<e13>() = test2.cget<e13>(); // this is fine even if test1 does not have any e1 component!
+		test4.get<e15>() = test2.cget<e15>();
 	}
 
 	auto test_result1 = coeff1 * test1 * coeff2 + test2;
@@ -376,6 +381,7 @@ int main()
 	//auto test_result3 = coeff1 * test1 * coeff2 + test4; // this will fail compilation (vector types are incompatible) ... eventually this should be fixed as it all fits into destination
 	std::cout << "testing... (press 'd' to delete input file)" << std::endl;
 
+	// checking both const and non-const accessors
 	std::cout << "("
 		<< test_result1.cget<e0>() << ", "
 	    << test_result1.get<e2>() << ", "
@@ -434,23 +440,25 @@ int main()
 		e5 = (1 << 5),
 	};
 	std::cout << "((e0 ^ e2) ^ e1) \n\t= "
-		<< alternating_traits<(e2 ^ e0), e1>::sign
+		<< alternating_traits<(e0 ^ e2), e1>::sign
 		<< " * (e0 ^ e1 ^ e2) \n\t= "
-		<< -alternating_traits<(e0 ^ e2), e1, false>::sign
+		<< reversion_conjugacy_traits<(e0 ^ e2)>::sign * alternating_traits<(e2 ^ e0), e1, false>::sign
 		<< " * (e2 ^ e1 ^ e0)"
 		<< std::endl;
 
 	std::cout << "((e5 ^ e3 ^ e2) ^ (e4 ^ e0)) \n\t= "
-		<< alternating_traits<(e5 ^ e3 ^ e2), (e4 ^ e0)>::sign
+		<< reversion_conjugacy_traits<(e5 ^ e3 ^ e2)>::sign * reversion_conjugacy_traits<(e4 ^ e0)>::sign * alternating_traits<(e2 ^ e3 ^ e5), (e0 ^ e4)>::sign
+		   * reversion_conjugacy_traits<(e5 ^ e4 ^ e3 ^ e2 ^ e0)>::sign
 		<< " * (e5 ^ e4 ^ e3 ^ e2 ^ e0) \n\t= "
-		<< +alternating_traits<(e2 ^ e3 ^ e5), (e0 ^ e4), false>::sign
+		<< alternating_traits<(e5 ^ e3 ^ e2), (e4 ^ e0), false>::sign * reversion_conjugacy_traits<(e5 ^ e4 ^ e3 ^ e2 ^ e0)>::sign
 		<< " * (e0 ^ e2 ^ e3 ^ e4 ^ e5)"
 		<< std::endl;
 
 	std::cout << "((e5 ^ e3 ^ e2) ^ (e5 ^ e1)) \n\t= "
-		<< alternating_traits<(e5 ^ e3 ^ e2), (e5 ^ e1)>::sign
+		<< reversion_conjugacy_traits<(e5 ^ e3 ^ e2)>::sign * reversion_conjugacy_traits<(e5 ^ e1)>::sign * alternating_traits<(e2 ^ e3 ^ e5), (e1 ^ e5)>::sign
+		   * reversion_conjugacy_traits<(e5 ^ e5 ^ e3 ^ e2 ^ e1)>::sign
 		<< " * (e5 ^ e5 ^ e3 ^ e2 ^ e1) \n\t= "
-		<< +alternating_traits<(e2 ^ e3 ^ e5), (e1 ^ e5), false>::sign
+		<< alternating_traits<(e5 ^ e3 ^ e2), (e5 ^ e1), false>::sign * reversion_conjugacy_traits<(e5 ^ e5 ^ e3 ^ e2 ^ e1)>::sign
 		<< " * (e1 ^ e2 ^ e3 ^ e5 ^ e5)"
 		<< std::endl;
 
