@@ -31,7 +31,7 @@ public:
 	typedef scalar_t scalar_type;
 	typedef std::array<scalar_type, dimension_size> container_type;
 
-	coordinates_t() = default;
+	coordinates_t() : container{} {};
 	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v): container(v.container) {};
 
 	explicit coordinates_t(const container_type& v) : container(v) {};
@@ -68,14 +68,14 @@ coordinates_t<scalar_t, dimension> operator +(const coordinates_t<scalar_t, dime
 }
 
 template<typename scalar_t, size_t dimension>
-const scalar_t* begin(const coordinates_t<scalar_t, dimension>& u)
+const auto begin(const coordinates_t<scalar_t, dimension>& u)
 {
-	return &*u.container.begin();
+	return u.container.begin();
 }
 template<typename scalar_t, size_t dimension>
-const scalar_t* end(const coordinates_t<scalar_t, dimension>& u)
+const auto end(const coordinates_t<scalar_t, dimension>& u)
 {
-	return &*u.container.end();
+	return u.container.end();
 }
 
 #if defined( DIRECTX_VECTOR )
@@ -94,8 +94,8 @@ public:
 	typedef DirectX::XMVECTORF32 container_type;
 	typedef DirectX::XMVECTOR    intermediate_type;
 
-	coordinates_t() = default;
-	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v) = default;
+	coordinates_t() : container{} {};
+	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v) : container(v.container) {};
 
 	explicit coordinates_t(const container_type& v) : container(v) {};
 	explicit coordinates_t(const intermediate_type& v) { container.v = v; };
@@ -190,8 +190,8 @@ public:
 	typedef typename coordinates_t<scalar_t, dimension_size>              coordinates_type;
 	typedef typename coordinates_t<scalar_t, dimension_size>::scalar_type scalar_type;
 
-	vector_t() = default;
-	vector_t(const vector_t<scalar_t, space_mask>& v) = default;
+	vector_t() : coordinates() {};
+	vector_t(const vector_t<scalar_t, space_mask>& v) : coordinates(v.coordinates) {};
 	explicit vector_t(const coordinates_type& v) : coordinates(v) {};
 	explicit vector_t(coordinates_type&& v) : coordinates(v) {};
 
@@ -304,8 +304,14 @@ int main()
 		e14 = (1 << 14),	e15 = (1 << 15),
 	};
 
-	vector_t<float, e0 | e2 | e7 | e15> test;
-	vector_t<float, e0 | e2 | e7 | e15> test2;
+	typedef vector_t<float, e0 | e2 | e7 | e15>       vector_type1;
+	typedef vector_t<float, e0 | e2 | e7 | e13 | e15> vector_type2;
+	vector_type1 test1;
+	vector_type1 test2;
+	vector_type2 test3;
+	vector_type2 test4;
+	static_assert(sizeof(vector_type1) == vector_type1::dimension_size * sizeof(vector_type1::scalar_type), "vector size is incorrect...");
+	static_assert(sizeof(vector_type2) == vector_type2::dimension_size * sizeof(vector_type2::scalar_type), "vector size is incorrect...");
 
 	float coeff1, coeff2;
 
@@ -327,10 +333,10 @@ int main()
 		std::istream& in = file.is_open() ? file : std::cin;
 
 		in >> coeff1 >> coeff2;
-		in >> test.get<e0>();
-		in >> test.get<e2>();
-		in >> test.get<e7>();
-		in >> test.get<e15>();
+		in >> test1.get<e0>();
+		in >> test1.get<e2>();
+		in >> test1.get<e7>();
+		in >> test1.get<e15>();
 
 		in >> test2.get<e0>();
 		in >> test2.get<e2>();
@@ -344,36 +350,47 @@ int main()
 			{
 				file << version_string << " " << version << std::endl;
 				file << coeff1 << " " << coeff2;
-				file << " " << test.get<e0>();
-				file << " " << test.get<e2>();
-				file << " " << test.get<e7>();
-				file << " " << test.get<e15>();
+				file << " " << test1.get<e0>();
+				file << " " << test1.get<e2>();
+				file << " " << test1.get<e7>();
+				file << " " << test1.get<e15>();
 				file << " " << test2.get<e0>();
 				file << " " << test2.get<e2>();
 				file << " " << test2.get<e7>();
 				file << " " << test2.get<e15>();
 			}
 		}
+
+		test3.get<e0>()  = test1.get<e0>();
+		test3.get<e2>()  = test1.get<e2>();
+		test3.get<e7>()  = test1.get<e7>();
+		test3.get<e15>() = test1.get<e15>();
+		test4.get<e0>()  = test2.get<e0>();
+		test4.get<e2>()  = test2.get<e2>();
+		test4.get<e7>()  = test2.get<e7>();
+		test4.get<e15>() = test2.get<e15>();
 	}
 
-	auto test3 = coeff1 * test * coeff2 + test2;
-	static_assert( sizeof(test) == 4 * sizeof(float), "vector size is incorrect..." );
+	auto test_result1 = coeff1 * test1 * coeff2 + test2;
+	auto test_result2 = coeff1 * test3 * coeff2 + test4;
+	//auto test_result3 = coeff1 * test1 * coeff2 + test4; // this will fail compilation (vector types are incompatible) ... eventually this should be fixed as it all fits into destination
 	std::cout << "testing... (press 'd' to delete input file)" << std::endl;
 
 	std::cout << "("
-		<< test3.cget<e0>() << ", "
-	    << test3.get<e2>() << ", "
-		<< test3.get<e7>() << ", "
-		<< test3.get<e15>()
+		<< test_result1.cget<e0>() << ", "
+	    << test_result1.get<e2>() << ", "
+		<< test_result1.get<e7>() << ", "
+		<< test_result1.get<e15>()
 		<< ")" << std::endl;
 
 	std::cout << "0 = "
-		<< test3.cget<0>()       << " = "
-		<< test3.get<e1 | e2>() << " = "
-		<< test3.get<e3>()
+		<< test_result1.cget<0>()       << " = "
+		<< test_result1.get<e1 | e2>() << " = "
+		<< test_result1.get<e3>()
 		<< std::endl;
 
-	std::cout << to_string<out_t>(test3) << std::endl;
+	std::cout << to_string<out_t>(test_result1) << std::endl;
+	std::cout << to_string<out_t>(test_result2) << std::endl;
 
 	int data = std::cin.get();
 	if (data == 'd')
