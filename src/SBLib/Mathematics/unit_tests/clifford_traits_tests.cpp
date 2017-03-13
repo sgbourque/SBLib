@@ -40,10 +40,14 @@ static_assert(reversion_conjugacy_traits<e01 >::sign == -1, "Invalid reversion c
 static_assert(reversion_conjugacy_traits<e012>::sign == -1, "Invalid reversion conjugacy sign");
 
 // grade check (ordering independant)
-static_assert(grade_conjugacy_traits<e   >::sign == +1, "Invalid grade conjugacy sign");
-static_assert(grade_conjugacy_traits<e0  >::sign == -1, "Invalid grade conjugacy sign");
-static_assert(grade_conjugacy_traits<e01 >::sign == +1, "Invalid grade conjugacy sign");
-static_assert(grade_conjugacy_traits<e012>::sign == -1, "Invalid grade conjugacy sign");
+static_assert(grade_conjugacy_traits<e   >::grade == 0, "Invalid grade");
+static_assert(grade_conjugacy_traits<e   >::sign  == +1, "Invalid grade conjugacy sign");
+static_assert(grade_conjugacy_traits<e0  >::grade == 1, "Invalid grade");
+static_assert(grade_conjugacy_traits<e0  >::sign  == -1, "Invalid grade conjugacy sign");
+static_assert(grade_conjugacy_traits<e01 >::grade == 2, "Invalid grade");
+static_assert(grade_conjugacy_traits<e01 >::sign  == +1, "Invalid grade conjugacy sign");
+static_assert(grade_conjugacy_traits<e012>::grade == 3, "Invalid grade");
+static_assert(grade_conjugacy_traits<e012>::sign  == -1, "Invalid grade conjugacy sign");
 
 // clifford adjoint parity check (ordering independant)
 static_assert(clifford_adjoint_conjugacy_traits<e   >::sign == +1, "Invalid adjoint conjugacy sign");

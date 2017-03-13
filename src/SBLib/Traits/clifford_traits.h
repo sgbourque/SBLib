@@ -47,8 +47,8 @@ private:
 	typedef bit_traits<second> second_traits;
 	enum : size_t
 	{
-		second_population        = second_traits::population_count,
-		second_permute_bit_index = (big_endian ? 0 : second_population - 1),
+		second_grade             = second_traits::population_count,
+		second_permute_bit_index = (big_endian ? 0 : second_grade - 1),
 		second_permute_bit       = second_traits::get_bit<second_permute_bit_index>::value,
 
 		low_bit_mask  = (second_permute_bit << 1) - 1,
@@ -120,15 +120,19 @@ public:
 // Calculate the residual sign after a full blade reversion conjugacy operation B -> B^T (e.g., by passing from big to little endian).
 // For instance, reversion of (e0^e1^e2) gives (e2^e1^e0) = -(e0^e1^e2) so reversion_conjugacy_traits<7> == -1.
 //
-template<size_t bit_set, bool big_endian = default_basis_big_endian>
+template<size_t in_bit_set, bool big_endian = default_basis_big_endian>
 struct reversion_conjugacy_traits
 {
 private:
-	typedef bit_traits<bit_set> traits;
+	typedef bit_traits<in_bit_set> traits;
 public:
+	enum : size_t
+	{
+		grade = traits::population_count,
+	};
 	enum : int
 	{
-		sign = (traits::population_count & 2) == 2 ? -1 : +1,
+		sign = (grade & 2) == 2 ? -1 : +1,
 	};
 };
 
@@ -137,15 +141,19 @@ public:
 // grade_conjugacy_traits
 // Calculate the residual sign after a full parity transformation e -> -e on a blade B -> B*.
 //
-template<size_t bit_set, bool big_endian = default_basis_big_endian>
+template<size_t in_bit_set, bool big_endian = default_basis_big_endian>
 struct grade_conjugacy_traits
 {
 private:
-	typedef bit_traits<bit_set> traits;
+	typedef bit_traits<in_bit_set> traits;
 public:
+	enum : size_t
+	{
+		grade = traits::population_count,
+	};
 	enum : int
 	{
-		sign = (traits::population_count & 1) == 1 ? -1 : +1,
+		sign = (grade & 1) == 1 ? -1 : +1,
 	};
 };
 
@@ -155,15 +163,19 @@ public:
 // Calculate the residual sign after a Clifford adjoint operation on a blade B -> B^t = (B*)^T = (B^T)*.
 // The Clifford adjoint is the result of both blade reversion and grade conjugation.
 //
-template<size_t bit_set, bool big_endian = default_basis_big_endian>
+template<size_t in_bit_set, bool big_endian = default_basis_big_endian>
 struct clifford_adjoint_conjugacy_traits
 {
 private:
-	typedef bit_traits<bit_set> traits;
+	typedef bit_traits<in_bit_set> traits;
 public:
+	enum : size_t
+	{
+		grade = traits::population_count,
+	};
 	enum : int
 	{
-		sign = grade_conjugacy_traits<bit_set, big_endian>::sign * reversion_conjugacy_traits<bit_set, big_endian>::sign,
+		sign = grade_conjugacy_traits<in_bit_set, big_endian>::sign * reversion_conjugacy_traits<in_bit_set, big_endian>::sign,
 	};
 };
 
@@ -178,14 +190,14 @@ public:
 //	*e2 = +(e0^e1).
 // In general, hodge duals satisfies B ^ *B = *1.
 //
-template<size_t bit_set, size_t mask, bool big_endian = default_basis_big_endian>
+template<size_t in_bit_set, size_t mask, bool big_endian = default_basis_big_endian>
 struct hodge_conjugacy_traits
 {
 private:
 	enum : size_t
 	{
-		parallel_projection      = (bit_set & mask),
-		perpendicular_projection = (bit_set & ~parallel_projection),
+		parallel_projection      = (in_bit_set & mask),
+		perpendicular_projection = (in_bit_set & ~parallel_projection),
 		hodge_complement         = (mask & ~parallel_projection),
 	};
 	enum : int
@@ -204,4 +216,9 @@ public:
 		//bit_set = (perpendicular_projection | hodge_complement),
 		bit_set = hodge_complement,
 	};
+	enum : size_t
+	{
+		grade = bit_traits<bit_set>::population_count,
+	};
+	static_assert( grade == bit_traits<mask>::population_count - bit_traits<parallel_projection>::population_count, "Incorrect grade!" );
 };
