@@ -3,237 +3,234 @@
 #include <Traits/bit_traits.h>
 #include <Traits/clifford_traits.h>
 
+#define TEST_PATH 0
 
+//
+// vector_t
+//
 #include <array>
 #define DIRECTX_VECTOR
 
-template<typename type_t>
-constexpr bool is_power_of_two(const type_t& value)
+template<template<typename, size_t> class components_type, typename scalar_t, size_t dimension>
+struct components_helper
 {
-	static_assert(std::is_integral<type_t>::value, "type is not integral.");
-	return value && ((value & (value - 1)) == 0);
-}
-
-
-
-
-template<typename scalar_t, size_t dimension>
-struct coordinates_t
-{
-private:
-	typedef bit_traits<(1 << dimension) - 1> traits;
 public:
 	enum
 	{
-		dimension_size = traits::population_count,
+		dimension_size = dimension,
 	};
-	static_assert( dimension_size == dimension, "dimension mismatch" );
-	typedef scalar_t scalar_type;
-	typedef std::array<scalar_type, dimension_size> container_type;
+	using scalar_type       = scalar_t;
+	using container_type    = std::array<scalar_type, dimension_size>;
+	using intermediate_type = scalar_type[dimension_size];
 
-	coordinates_t() : container{} {};
-	coordinates_t(coordinates_t<scalar_type, dimension_size>&& v): container(std::move(v.container)) {};
-	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v) : container(v.container) {};
+	scalar_type& operator[](const size_t index) { return static_cast<this_type*>(this)->container[index]; }
+	const scalar_type& operator[](const size_t index) const { return static_cast<this_type*>(this)->container[index]; }
 
-	explicit coordinates_t(const container_type& v) : container(v) {};
-	template<typename... scalars> explicit coordinates_t(scalar_type&& first, scalars&&... coords) : container{ first, std::forward<scalars>(coords)... } {}
+private:
+	using this_type = components_type<scalar_t, dimension>;
+};
 
-	coordinates_t(container_type&& v) : container(v) {}
+template<typename scalar_t, size_t dimension>
+struct components_t : components_helper<components_t, scalar_t, dimension>
+{
+	components_t() : container{} {};
+	components_t(components_t<scalar_type, dimension_size>&& v): container(std::move(v.container)) {};
+	components_t(const components_t<scalar_type, dimension_size>& v) : container(v.container) {};
+
+	explicit components_t(const container_type& v) : container(v) {};
+	explicit components_t(const intermediate_type& v) { container.v = v; };
+	template<typename... scalars> explicit components_t(scalar_type&& first, scalars&&... coords) : container{ first, std::forward<scalars>(coords)... } {}
+
+	components_t(container_type&& v) : container(v) {}
+	components_t(intermediate_type&& v) { container.v = std::move(v); }
 
 	operator container_type&() { return container; }
 	operator const container_type&() const { return container; }
 
-	scalar_t& operator[](const size_t index) { return container[index]; }
-	const scalar_t& operator[](const size_t index) const { return container[index]; }
-
 	container_type container;
 };
-template<typename scalar_t, size_t dimension>
-coordinates_t<scalar_t, dimension> operator *(const scalar_t& scale, const coordinates_t<scalar_t, dimension>& v)
-{
-	coordinates_t<scalar_t, dimension> value;
-	std::transform(v.container.begin(), v.container.end(), value.container.begin(), [&scale](const auto& u) -> auto { return u * scale; });
-	return std::move(value);
-}
-template<typename scalar_t, size_t dimension>
-coordinates_t<scalar_t, dimension> operator *(const coordinates_t<scalar_t, dimension>& u, const scalar_t& scale)
-{
-	return std::move(scale * u);
-}
-template<typename scalar_t, size_t dimension>
-coordinates_t<scalar_t, dimension> operator +(const coordinates_t<scalar_t, dimension>& u, const coordinates_t<scalar_t, dimension>& v)
-{
-	coordinates_t<scalar_t, dimension> value;
-	std::transform(u.container.begin(), u.container.end(), v.container.begin(), value.container.begin(), [](const auto& a, const auto& b) -> auto { return a + b; });
-	return std::move(value);
-}
 
 template<typename scalar_t, size_t dimension>
-const auto begin(const coordinates_t<scalar_t, dimension>& u)
+auto begin(components_t<scalar_t, dimension>& u)
 {
 	return u.container.begin();
 }
 template<typename scalar_t, size_t dimension>
-const auto end(const coordinates_t<scalar_t, dimension>& u)
+const auto begin(const components_t<scalar_t, dimension>& u)
+{
+	return u.container.begin();
+}
+template<typename scalar_t, size_t dimension>
+const auto end(const components_t<scalar_t, dimension>& u)
 {
 	return u.container.end();
+}
+template<typename scalar_t, size_t dimension>
+components_t<scalar_t, dimension> operator *(const scalar_t& scale, const components_t<scalar_t, dimension>& v)
+{
+	components_t<scalar_t, dimension> value;
+	std::transform(begin(v), end(v), begin(value), [&scale](const auto& u) -> auto { return u * scale; });
+	return std::move(value);
+}
+template<typename scalar_t, size_t dimension>
+components_t<scalar_t, dimension> operator *(const components_t<scalar_t, dimension>& u, const scalar_t& scale)
+{
+	return std::move(scale * u);
+}
+template<typename scalar_t, size_t dimension>
+components_t<scalar_t, dimension> operator +(const components_t<scalar_t, dimension>& u, const components_t<scalar_t, dimension>& v)
+{
+	components_t<scalar_t, dimension> value;
+	std::transform(begin(u), end(u), begin(v), begin(value), [](const auto& a, const auto& b) -> auto { return a + b; });
+	return std::move(value);
 }
 
 #if defined( DIRECTX_VECTOR )
 #include <DirectXMath.h>
-template<>
-struct coordinates_t<float, 4>
+template<template<typename, size_t> class components_type>
+struct components_helper<components_type, float, 4>
 {
-private:
-	typedef bit_traits<(1 << 4) - 1> traits;
 public:
 	enum
 	{
-		dimension_size = traits::population_count,
+		dimension_size = 4,
 	};
 	typedef float scalar_type;
 	typedef DirectX::XMVECTORF32 container_type;
 	typedef DirectX::XMVECTOR    intermediate_type;
 
-	coordinates_t() : container{} {};
-	coordinates_t(const coordinates_t<scalar_type, dimension_size>& v) : container(v.container) {};
+	scalar_type& operator[](const size_t index) { return static_cast<this_type*>(this)->container.f[index]; }
+	const scalar_type& operator[](const size_t index) const { return static_cast<const this_type*>(this)->container.f[index]; }
 
-	explicit coordinates_t(const container_type& v) : container(v) {};
-	explicit coordinates_t(const intermediate_type& v) { container.v = v; };
-	template<typename... scalars> explicit coordinates_t(scalar_type&& first, scalars&&... coords): container{first, std::forward<scalars>(coords)...} {}
-
-	coordinates_t(container_type&& v) : container(v) {}
-	coordinates_t(intermediate_type&& v) { container.v = std::move(v); }
-
-	operator container_type&() { return container; }
-	operator const container_type&() const { return container; }
-
-	scalar_type&  operator[](const size_t index) { return container.f[index]; }
-	const scalar_type& operator[](const size_t index) const { return container.f[index]; }
-
-	container_type container;
+private:
+	typedef components_type<scalar_type, dimension_size> this_type;
 };
 
-coordinates_t<float, 4> operator *(const float& scale, const coordinates_t<float, 4>& v)
-{
-	return std::move(v.container * scale);
-}
-coordinates_t<float, 4> operator *(const coordinates_t<float, 4>& u, const float& scale)
-{
-	return std::move(scale * u);
-}
-coordinates_t<float, 4> operator +(const coordinates_t<float, 4>& u, const coordinates_t<float, 4>& v)
-{
-	return std::move(u.container + v.container);
-}
-
-const float* begin(const coordinates_t<float, 4>& u)
+float* begin(components_t<float, 4>& u)
 {
 	return &u.container.f[0];
 }
-const float* end(const coordinates_t<float, 4>& u)
+const float* begin(const components_t<float, 4>& u)
+{
+	return &u.container.f[0];
+}
+const float* end(const components_t<float, 4>& u)
 {
 	return &u.container.f[4];
 }
-#endif
+
+components_t<float, 4> operator *(const float& scale, const components_t<float, 4>& v)
+{
+	return std::move(v.container * scale);
+}
+components_t<float, 4> operator *(const components_t<float, 4>& u, const float& scale)
+{
+	return std::move(scale * u);
+}
+components_t<float, 4> operator +(const components_t<float, 4>& u, const components_t<float, 4>& v)
+{
+	return std::move(u.container + v.container);
+}
+#endif // #if defined( DIRECTX_VECTOR )
+
 
 template<typename scalar_t, size_t space_mask>
 struct vector_t
 {
 private:
+	using traits = bit_traits<space_mask>;
+
 	template<size_t subspace_mask>
 	struct get_traits_helper
 	{
-		typedef scalar_t& reference_type;
-		typedef const scalar_t& const_reference_type;
+		using reference_type       = scalar_t&;
+		using const_reference_type = const scalar_t&;
 	};
 	template<>
 	struct get_traits_helper<0>
 	{
-		typedef scalar_t reference_type;
-		typedef scalar_t const_reference_type;
+		using reference_type       = scalar_t;
+		using const_reference_type = scalar_t;
 	};
 	template<size_t subspace_mask>
 	struct get_traits
 	{
-		static const size_t mask = is_power_of_two(subspace_mask) ? (subspace_mask & space_mask) : 0;
-		typedef typename get_traits_helper<mask>::reference_type reference_type;
-		typedef typename get_traits_helper<mask>::const_reference_type const_reference_type;
+		static const size_t mask   = ( bit_traits<subspace_mask>::population_count == 1 ) ? (subspace_mask & space_mask) : 0;
+		using reference_type       = typename get_traits_helper<mask>::reference_type;
+		using const_reference_type = typename get_traits_helper<mask>::const_reference_type;
 	};
 
 	template<size_t subspace_mask>
-	constexpr typename get_traits<subspace_mask>::reference_type get_helper()
+	constexpr auto get_helper() -> typename get_traits<subspace_mask>::reference_type
 	{
-		return coordinates[traits::get_bit_index<subspace_mask>()];
+		return components[traits::get_bit_index<subspace_mask>()];
 	}
 	template<>
-	constexpr scalar_t get_helper<0>()
+	constexpr auto get_helper<0>() -> typename get_traits<0>::reference_type
 	{
 		return scalar_t(0);
 	}
 	template<size_t subspace_mask>
-	constexpr typename get_traits<subspace_mask>::const_reference_type get_helper() const
+	constexpr auto get_helper() const -> typename get_traits<subspace_mask>::const_reference_type
 	{
-		return coordinates[traits::get_bit_index<subspace_mask>()];
+		return components[traits::get_bit_index<subspace_mask>()];
 	}
 	template<>
-	constexpr scalar_t get_helper<0>() const
+	constexpr auto get_helper<0>() const -> typename get_traits<0>::const_reference_type
 	{
 		return scalar_t(0);
 	}
 
 public:
-	typedef bit_traits<space_mask> traits;
 	enum
 	{
 		dimension_size = traits::population_count,
 	};
-	typedef typename coordinates_t<scalar_t, dimension_size>              coordinates_type;
-	typedef typename coordinates_t<scalar_t, dimension_size>::scalar_type scalar_type;
+	using components_type = typename components_t<scalar_t, dimension_size>              ;
+	using scalar_type     = typename components_t<scalar_t, dimension_size>::scalar_type;
 
-	vector_t() : coordinates() {};
-	vector_t(const vector_t<scalar_t, space_mask>& v) : coordinates(v.coordinates) {};
-	explicit vector_t(const coordinates_type& v) : coordinates(v) {};
-	explicit vector_t(coordinates_type&& v) : coordinates(v) {};
+	vector_t() : components() {};
+	vector_t(const vector_t<scalar_t, space_mask>& v) : components(v.components) {};
+	explicit vector_t(const components_type& v) : components(v) {};
+	explicit vector_t(components_type&& v) : components(v) {};
 
 	template<typename... scalars>
-	explicit vector_t(scalars&&... coords) : coordinates{std::forward<scalars>(coords)...} {}
-
+	explicit vector_t(scalars&&... coords) : components{std::forward<scalars>(coords)...} {}
 
 	template<size_t subspace_mask>
-	constexpr typename get_traits<subspace_mask>::reference_type get()
+	constexpr auto get() -> typename get_traits<subspace_mask>::reference_type
 	{
 		return get_helper<get_traits<subspace_mask>::mask>();
 	}
 	template<size_t subspace_mask>
-	constexpr typename get_traits<subspace_mask>::const_reference_type get() const
+	constexpr auto get() const
 	{
 		return get_helper<get_traits<subspace_mask>::mask>();
 	}
 	template<size_t subspace_mask>
-	constexpr typename get_traits<subspace_mask>::const_reference_type cget() const
+	constexpr auto cget() const
 	{
 		return get<subspace_mask>();
 	}
 
-	coordinates_type coordinates;
+	components_type components;
 };
 
 
 template<typename scalar_t, size_t space_mask>
-vector_t<scalar_t, space_mask> operator *(const scalar_t& scale, const vector_t<scalar_t, space_mask>& v)
+auto operator *(const scalar_t& scale, const vector_t<scalar_t, space_mask>& v)
 {
-	return vector_t<scalar_t, space_mask>(std::move(v.coordinates * scale));
+	return vector_t<scalar_t, space_mask>(std::move(v.components * scale));
 }
 template<typename scalar_t, size_t space_mask>
-vector_t<scalar_t, space_mask> operator *(const vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
+auto operator *(const vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
 {
 	return std::move(scale * u);
 }
 template<typename scalar_t, size_t space_mask>
-vector_t<scalar_t, space_mask> operator +(const vector_t<scalar_t, space_mask>& u, const vector_t<scalar_t, space_mask>& v)
+auto operator +(const vector_t<scalar_t, space_mask>& u, const vector_t<scalar_t, space_mask>& v)
 {
-	return vector_t<scalar_t, space_mask>(std::move(u.coordinates + v.coordinates));
+	return vector_t<scalar_t, space_mask>(std::move(u.components + v.components));
 }
 
 
@@ -277,7 +274,7 @@ std::string to_string(const vector_t<field_type, dimension_size>& vec)
 	std::string delimiter;
 	std::stringstream ss;
 	ss << traits_t::prefix();
-	for (const auto& value : vec.coordinates)
+	for (const auto& value : vec.components)
 		(ss << delimiter << value), (delimiter = traits_t::delimiter());
 	ss << traits_t::postfix();
 
@@ -285,8 +282,7 @@ std::string to_string(const vector_t<field_type, dimension_size>& vec)
 }
 
 
-#if 1
-
+#if (TEST_PATH == 0)
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -403,9 +399,8 @@ int main()
 	if (data == 'd')
 		std::remove(input_filename.c_str());
 }
-
-#elif 1
-
+#endif // // #if (TEST_PATH == 0)
+#if (TEST_PATH == 1)
 #include <iostream>
 #include <iomanip>
 int main()
@@ -465,10 +460,8 @@ int main()
 
 	std::cin.get();
 }
-
-#elif 1
-
-
+#endif // #if (TEST_PATH == 1)
+#if (TEST_PATH == 2)
 //
 // module_t
 //
@@ -479,13 +472,13 @@ struct module_t
 	enum { dimension = dimension_size };
 
 	module_t()
-		: coordinates()
+		: components()
 	{}
 	module_t(std::array<field_t, dimension>&& coords)
-		: coordinates(coords)
+		: components(coords)
 	{}
 
-	std::array<field_t, dimension> coordinates;
+	std::array<field_t, dimension> components;
 };
 
 
@@ -571,7 +564,7 @@ std::string to_string(const module_t<field_type, dimension_size>& vec)
 	std::string delimiter;
 	std::stringstream ss;
 	ss << traits_t::prefix();
-	for (const auto& value : vec.coordinates)
+	for (const auto& value : vec.components)
 		(ss << delimiter << value), (delimiter = traits_t::delimiter());
 	ss << traits_t::postfix();
 
@@ -692,5 +685,4 @@ int main()
 
 	std::cin.get();
 }
-
-#endif
+#endif // #if (TEST_PATH == 2)
