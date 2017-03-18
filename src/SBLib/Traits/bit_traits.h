@@ -1,32 +1,32 @@
 #pragma once
 #include <Algorithms/static_for_each.h>
 
-template<size_t bit_set>
+template<size_t bit_mask>
 struct bit_traits
 {
 private:
 	enum : size_t
 	{
-		first_bit        = (((bit_set - 1) & ~bit_set) + 1),
-		remaining_bits   = (bit_set & ~first_bit),
+		first_bit        = (((bit_mask - 1) & ~bit_mask) + 1),
+		remaining_bits   = (bit_mask & ~first_bit),
 	};
 public:
 	enum : size_t
 	{
-		value            = bit_set,
+		value            = bit_mask,
 		population_count = 1 + bit_traits<remaining_bits>::population_count,
 	};
 
 	template<size_t index>
-	struct get_bit
+	struct bit_mask
 	{
 		enum : size_t
 		{
-			value = bit_traits<remaining_bits>::get_bit<index - 1>::value,
+			value = bit_traits<remaining_bits>::bit_mask<index - 1>::value,
 		};
 	};
 	template<>
-	struct get_bit<0>
+	struct bit_mask<0>
 	{
 		enum : size_t
 		{
@@ -34,12 +34,12 @@ public:
 		};
 	};
 
-	template<size_t bit>
+	template<size_t bit_value>
 	struct bit_index
 	{
 		enum : size_t
 		{
-			value = 1 + bit_traits<remaining_bits>::bit_index<bit>::value,
+			value = 1 + bit_traits<remaining_bits>::bit_index<bit_value>::value,
 		};
 	};
 	template<>
@@ -51,15 +51,29 @@ public:
 		};
 	};
 
-	template<size_t index>
-	static constexpr size_t get_set_bit()
+	template<size_t bit_value>
+	struct mask_index
 	{
-		return get_bit<index>::value;
+		enum : size_t
+		{
+			value = bit_traits<bit_value - 1>::population_count,
+		};
+	};
+
+	template<size_t index>
+	static constexpr size_t get_bit()
+	{
+		return bit_mask<index>::value;
 	}
-	template<size_t bit>
+	template<size_t bit_value>
 	static constexpr size_t get_bit_index()
 	{
-		return bit_index<bit>::value;
+		return bit_index<bit_value>::value;
+	}
+	template<size_t bit_value>
+	static constexpr size_t get_mask_index()
+	{
+		return mask_index<bit_value>::value;
 	}
 };
 template<>
@@ -73,7 +87,7 @@ public:
 	};
 
 	template<size_t>
-	struct get_bit
+	struct bit_mask
 	{
 		enum : size_t
 		{
@@ -85,15 +99,28 @@ public:
 	{
 	};
 
-	template<size_t index>
-	static constexpr size_t get_set_bit()
+	template<size_t>
+	struct mask_index
 	{
-		return set_bit<index>::value;
+		enum : size_t
+		{
+		};
+	};
+
+	template<size_t index>
+	static constexpr size_t get_bit()
+	{
+		return bit_mask<index>::value;
 	}
-	template<size_t bit>
+	template<size_t bit_value>
 	static constexpr size_t get_bit_index()
 	{
-		return bit_index<bit>::value;
+		return bit_index<bit_value>::value;
+	}
+	template<size_t index>
+	static constexpr size_t get_mask_index()
+	{
+		return mask_index<index>::value;
 	}
 };
 
@@ -105,7 +132,7 @@ struct get_bit_helper
 	{
 		enum : size_t
 		{
-			value = traits::get_bit<index>::value,
+			value = traits::bit_mask<index>::value,
 		};
 	};
 
@@ -166,7 +193,7 @@ struct next_bit_helper
 	public:
 		enum : size_t
 		{
-			value = traits::get_bit<next_index>::value,
+			value = traits::bit_mask<next_index>::value,
 		};
 	};
 
@@ -183,6 +210,6 @@ template<typename bit_traits_t> struct for_each_bit_index
 	template<template<size_t, size_t> class fct_type, typename... type_t>
 	static void iterate(type_t&&... types)
 	{
-		static_for_each<bit_traits_t::get_bit<0>::value, bit_traits_t::get_bit<bit_traits_t::population_count>::value, get_bit_index_helper<bit_traits_t>, next_bit_helper<bit_traits_t>>::iterate<fct_type>(types...);
+		static_for_each<bit_traits_t::get_bit<0>(), bit_traits_t::get_bit<bit_traits_t::population_count>(), get_bit_index_helper<bit_traits_t>, next_bit_helper<bit_traits_t>>::iterate<fct_type>(types...);
 	}
 };

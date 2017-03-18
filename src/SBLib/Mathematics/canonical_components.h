@@ -220,8 +220,8 @@ public:
 	using container_type = std::array<parallel_type, parallel_dimension_count>;
 	using intermediate_type = parallel_type[parallel_dimension_count];
 
-	scalar_type& operator[](const size_t index) { return static_cast<this_type*>(this)->container[index / parallel_dimension_size][0]; }
-	const scalar_type& operator[](const size_t index) const { return static_cast<const this_type*>(this)->container[index / parallel_dimension_size][0]; }
+	scalar_type& operator[](const size_t index) { return static_cast<this_type*>(this)->container[index / parallel_dimension_size][index % parallel_dimension_size]; }
+	const scalar_type& operator[](const size_t index) const { return static_cast<const this_type*>(this)->container[index / parallel_dimension_size][index % parallel_dimension_size]; }
 
 private:
 	using this_type = canonical_components_type<scalar_type, dimension_size>;

@@ -216,7 +216,7 @@ struct output_vector_component
 			using type_t = vector_t<field_type, space_mask>;
 			using output_traits_t = output_traits<type_t>;
 			const std::string delimiter = (loop == 0) ? "" : output_traits_t::delimiter();
-			out << delimiter << vec.get<bit_mask>();
+			out << delimiter << "e" << bit_traits<space_mask>::get_mask_index<bit_mask>() << " = " << vec.get<bit_mask>();
 		}
 	};
 };
@@ -461,7 +461,7 @@ class test_clifford_algebra : public RegisteredFunctor
 	{
 		output_bit_index(std::ostream& out)
 		{
-			static const char* const delimiter = ((loop == traits::get_bit<0>::value) ? "" : ",");
+			static const char* const delimiter = ((loop == traits::get_bit<0>()) ? "" : ",");
 			out << delimiter << value;
 		}
 	};
