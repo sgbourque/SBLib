@@ -1,21 +1,21 @@
 #pragma once
+#include <functional>
 
 template<size_t begin, size_t end, class get_helper, class increment_helper>
 struct static_for_each
 {
-	template<class fct_type>
-	static void iterate(fct_type fct)
+	template<template<size_t, size_t> class fct_type, typename... type_t>
+	static void iterate(type_t&&... types)
 	{
-		fct(get_helper::get_helper<begin>::value, begin);
-		static_for_each<increment_helper::increment_helper<begin>::value, end, get_helper, increment_helper>::iterate(fct);
+		fct_type<get_helper::get_helper<begin>::value, begin>(types...);
+		static_for_each<increment_helper::increment_helper<begin>::value, end, get_helper, increment_helper>::iterate<fct_type>(types...);
 	}
 };
 template<size_t end, class get_helper, class increment_helper>
 struct static_for_each<end, end, get_helper, increment_helper>
 {
-	template<class fct_type>
-	static void iterate(fct_type)
+	template<template<size_t, size_t> class fct_type, typename... type_t>
+	static void iterate(type_t&&...)
 	{
-		// TODO / C++17: use [[unused]] fct here instead so we can still use it for debugging if needed later...
 	}
 };

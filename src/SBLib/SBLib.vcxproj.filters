@@ -41,5 +41,8 @@
     <ClInclude Include="Traits\clifford_traits.h">
       <Filter>Header Files\Traits</Filter>
     </ClInclude>
+    <ClInclude Include="Mathematics\canonical_components.h">
+      <Filter>Header Files\Mathematics</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

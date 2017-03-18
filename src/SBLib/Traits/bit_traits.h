@@ -1,4 +1,5 @@
 #pragma once
+#include <Algorithms/static_for_each.h>
 
 template<size_t bit_set>
 struct bit_traits
@@ -53,7 +54,7 @@ public:
 	template<size_t index>
 	static constexpr size_t get_set_bit()
 	{
-		return set_bit<index>::value;
+		return get_bit<index>::value;
 	}
 	template<size_t bit>
 	static constexpr size_t get_bit_index()
@@ -173,5 +174,15 @@ struct next_bit_helper
 	static constexpr size_t increment()
 	{
 		return increment_helper<bit>::value;
+	}
+};
+
+template<typename bit_traits_t> struct for_each_bit : static_for_each<0, bit_traits_t::population_count, get_bit_helper<bit_traits_t>, increment_bit_index_helper<bit_traits_t>> {};
+template<typename bit_traits_t> struct for_each_bit_index
+{
+	template<template<size_t, size_t> class fct_type, typename... type_t>
+	static void iterate(type_t&&... types)
+	{
+		static_for_each<bit_traits_t::get_bit<0>::value, bit_traits_t::get_bit<bit_traits_t::population_count>::value, get_bit_index_helper<bit_traits_t>, next_bit_helper<bit_traits_t>>::iterate<fct_type>(types...);
 	}
 };

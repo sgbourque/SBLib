@@ -1,137 +1,13 @@
-#include <Algorithms/static_for_each.h>
 #include <Mathematics/binomial_coefficient.h>
-#include <Traits/bit_traits.h>
+#include <Mathematics/canonical_components.h>
 #include <Traits/clifford_traits.h>
+#include <Traits/bit_traits.h>
+
+#define USING_STATIC_FOR_EACH_OUTPUT 0 // setting this to 1 will use very heavy static code (test)
 
 //
 // vector_t
 //
-#include <array>
-#define DIRECTX_VECTOR
-
-template<template<typename, size_t> class components_type, typename scalar_t, size_t dimension>
-struct components_helper
-{
-public:
-	enum
-	{
-		dimension_size = dimension,
-	};
-	using scalar_type       = scalar_t;
-	using container_type    = std::array<scalar_type, dimension_size>;
-	using intermediate_type = scalar_type[dimension_size];
-
-	scalar_type& operator[](const size_t index) { return static_cast<this_type*>(this)->container[index]; }
-	const scalar_type& operator[](const size_t index) const { return static_cast<this_type*>(this)->container[index]; }
-
-private:
-	using this_type = components_type<scalar_t, dimension>;
-};
-
-template<typename scalar_t, size_t dimension>
-struct components_t : components_helper<components_t, scalar_t, dimension>
-{
-	components_t() : container{} {};
-	components_t(components_t<scalar_type, dimension_size>&& v): container(std::move(v.container)) {};
-	components_t(const components_t<scalar_type, dimension_size>& v) : container(v.container) {};
-
-	explicit components_t(const container_type& v) : container(v) {};
-	explicit components_t(const intermediate_type& v) { container.v = v; };
-	template<typename... scalars> explicit components_t(scalar_type&& first, scalars&&... coords) : container{ first, std::forward<scalars>(coords)... } {}
-
-	components_t(container_type&& v) : container(v) {}
-	components_t(intermediate_type&& v) { container.v = std::move(v); }
-
-	operator container_type&() { return container; }
-	operator const container_type&() const { return container; }
-
-	container_type container;
-};
-
-template<typename scalar_t, size_t dimension>
-auto begin(components_t<scalar_t, dimension>& u)
-{
-	return u.container.begin();
-}
-template<typename scalar_t, size_t dimension>
-const auto begin(const components_t<scalar_t, dimension>& u)
-{
-	return u.container.begin();
-}
-template<typename scalar_t, size_t dimension>
-const auto end(const components_t<scalar_t, dimension>& u)
-{
-	return u.container.end();
-}
-template<typename scalar_t, size_t dimension>
-components_t<scalar_t, dimension> operator *(const scalar_t& scale, const components_t<scalar_t, dimension>& v)
-{
-	components_t<scalar_t, dimension> value;
-	std::transform(begin(v), end(v), begin(value), [&scale](const auto& u) -> auto { return u * scale; });
-	return std::move(value);
-}
-template<typename scalar_t, size_t dimension>
-components_t<scalar_t, dimension> operator *(const components_t<scalar_t, dimension>& u, const scalar_t& scale)
-{
-	return std::move(scale * u);
-}
-template<typename scalar_t, size_t dimension>
-components_t<scalar_t, dimension> operator +(const components_t<scalar_t, dimension>& u, const components_t<scalar_t, dimension>& v)
-{
-	components_t<scalar_t, dimension> value;
-	std::transform(begin(u), end(u), begin(v), begin(value), [](const auto& a, const auto& b) -> auto { return a + b; });
-	return std::move(value);
-}
-
-#if defined( DIRECTX_VECTOR )
-#include <DirectXMath.h>
-template<template<typename, size_t> class components_type>
-struct components_helper<components_type, float, 4>
-{
-public:
-	enum
-	{
-		dimension_size = 4,
-	};
-	using scalar_type       = float;
-	using container_type    = DirectX::XMVECTORF32;
-	using intermediate_type = DirectX::XMVECTOR;
-
-	scalar_type& operator[](const size_t index) { return static_cast<this_type*>(this)->container.f[index]; }
-	const scalar_type& operator[](const size_t index) const { return static_cast<const this_type*>(this)->container.f[index]; }
-
-private:
-	using this_type = components_type<scalar_type, dimension_size>;
-};
-
-float* begin(components_t<float, 4>& u)
-{
-	return &u.container.f[0];
-}
-const float* begin(const components_t<float, 4>& u)
-{
-	return &u.container.f[0];
-}
-const float* end(const components_t<float, 4>& u)
-{
-	return &u.container.f[4];
-}
-
-components_t<float, 4> operator *(const components_t<float, 4> u, const float scale)
-{
-	return std::move(u.container * scale);
-}
-components_t<float, 4> operator *(const float scale, const components_t<float, 4> v)
-{
-	return std::move(v * scale);
-}
-components_t<float, 4> operator +(const components_t<float, 4> u, const components_t<float, 4> v)
-{
-	return std::move(u.container + v.container);
-}
-#endif // #if defined( DIRECTX_VECTOR )
-
-
 template<typename scalar_t, size_t space_mask>
 struct vector_t
 {
@@ -179,21 +55,55 @@ private:
 		return scalar_t(0);
 	}
 
+	template<size_t value, size_t loop>
+	struct component_assign_helper
+	{
+		template<typename scalar_dest, size_t space_mask_dest, typename scalar_src, size_t space_mask_src>
+		component_assign_helper(vector_t<scalar_dest, space_mask_dest>& u, const vector_t<scalar_src, space_mask_src>& v)
+		{
+			static_assert( (value & space_mask) != 0, "Cannot assign value to orthogonal components of a vector." );
+			u.get<value>() = static_cast<scalar_dest>( v.get<value>() );
+		}
+	};
+
 public:
 	enum
 	{
+		space_mask     = space_mask,
 		dimension_size = traits::population_count,
 	};
-	using components_type = typename components_t<scalar_t, dimension_size>              ;
-	using scalar_type     = typename components_t<scalar_t, dimension_size>::scalar_type;
+	using components_type = typename canonical_components_t<scalar_t, dimension_size>              ;
+	using scalar_type     = typename canonical_components_t<scalar_t, dimension_size>::scalar_type;
 
 	vector_t() : components() {};
-	vector_t(const vector_t<scalar_t, space_mask>& v) : components(v.components) {};
+	vector_t(const vector_t& v) : components(v.components) {};
 	explicit vector_t(const components_type& v) : components(v) {};
 	explicit vector_t(components_type&& v) : components(v) {};
 
 	template<typename... scalars>
 	explicit vector_t(scalars&&... coords) : components{std::forward<scalars>(coords)...} {}
+
+	template<typename alt_scalar_t, size_t alt_space_mask>
+	vector_t(const vector_t<alt_scalar_t, alt_space_mask>& v) : components()
+	{
+		using alt_traits = bit_traits<alt_space_mask>;
+		for_each_bit<alt_traits>::iterate<component_assign_helper>(*this, v);
+	};
+
+	template<typename alt_scalar_t, size_t alt_space_mask>
+	vector_t<scalar_t, alt_space_mask> project() const
+	{
+		vector_t<alt_scalar_t, alt_space_mask> v;
+		using alt_traits = bit_traits<(alt_space_mask & space_mask)>;
+		for_each_bit<alt_traits>::iterate<component_assign_helper>(v, *this);
+		return std::move(v);
+	};
+	template<typename alt_vector_t>
+	alt_vector_t project() const
+	{
+		return project<alt_vector_t::scalar_type, alt_vector_t::space_mask>();
+	};
+
 
 	template<size_t subspace_mask>
 	constexpr auto get() -> typename get_traits<subspace_mask>::reference_type
@@ -216,14 +126,34 @@ public:
 
 
 template<typename scalar_t, size_t space_mask>
-auto operator *(const scalar_t& scale, const vector_t<scalar_t, space_mask>& v)
+const auto& operator *=(vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
 {
-	return vector_t<scalar_t, space_mask>(std::move(v.components * scale));
+	return u.components *= scale;
 }
 template<typename scalar_t, size_t space_mask>
 auto operator *(const vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
 {
-	return std::move(scale * u);
+	return vector_t<scalar_t, space_mask>(std::move(u.components * scale));
+}
+template<typename scalar_t, size_t space_mask>
+auto operator *(const scalar_t& scale, const vector_t<scalar_t, space_mask>& v)
+{
+	return std::move(v * scale);
+}
+template<typename scalar_t, size_t space_mask>
+const auto& operator /=(vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
+{
+	return u.components /= scale;
+}
+template<typename scalar_t, size_t space_mask>
+auto operator /(const vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
+{
+	return vector_t<scalar_t, space_mask>(std::move(v.components / scale));
+}
+template<typename scalar_t, size_t space_mask>
+const auto& operator +=(vector_t<scalar_t, space_mask>& u, vector_t<scalar_t, space_mask>& v)
+{
+	return u.components += v.components;
 }
 template<typename scalar_t, size_t space_mask>
 auto operator +(const vector_t<scalar_t, space_mask>& u, const vector_t<scalar_t, space_mask>& v)
@@ -273,21 +203,47 @@ struct raw_t<vector_t<field_t, dimension>>
 	static constexpr std::string postfix() { return "}"; }
 };
 
-template<template<typename> class traits, typename field_type, size_t dimension_size>
-std::string to_string(const vector_t<field_type, dimension_size>& vec)
+#if USING_STATIC_FOR_EACH_OUTPUT
+template<template<typename> class output_traits>
+struct output_vector_component
 {
-	typedef vector_t<field_type, dimension_size> type_t;
-	typedef traits<type_t> traits_t;
-
-	std::string delimiter;
-	std::stringstream ss;
-	ss << traits_t::prefix();
-	for (const auto& value : vec.components)
+	template<size_t bit_mask, size_t loop>
+	struct do_action
 	{
-		ss << delimiter << value;
-		delimiter = traits_t::delimiter();
+		template<typename field_type, size_t space_mask>
+		do_action(std::ostream& out, const vector_t<field_type, space_mask>& vec)
+		{
+			using type_t = vector_t<field_type, space_mask>;
+			using output_traits_t = output_traits<type_t>;
+			const std::string delimiter = (loop == 0) ? "" : output_traits_t::delimiter();
+			out << delimiter << vec.get<bit_mask>();
+		}
+	};
+};
+#endif // #if USING_STATIC_FOR_EACH_OUTPUT
+
+template<template<typename> class output_traits, typename field_type, size_t space_mask>
+std::string to_string(const vector_t<field_type, space_mask>& vec)
+{
+	using type_t = vector_t<field_type, space_mask>;
+	using space_traits_t = bit_traits<space_mask>;
+	using output_traits_t = output_traits<type_t>;
+
+	std::stringstream ss;
+	ss << output_traits_t::prefix();
+
+#if USING_STATIC_FOR_EACH_OUTPUT
+	for_each_bit<space_traits_t>::iterate<output_vector_component<output_traits>::do_action>(ss, vec);
+#else // #if USING_STATIC_FOR_EACH_OUTPUT
+	std::string delimiter;
+	for (size_t index = 0; index < vec.dimension_size; ++index)
+	{
+		ss << delimiter << vec.components[index];
+		delimiter = output_traits_t::delimiter();
 	}
-	ss << traits_t::postfix();
+#endif // #if USING_STATIC_FOR_EACH_OUTPUT
+
+	ss << output_traits_t::postfix();
 
 	return std::move( ss.str() );
 }
@@ -322,7 +278,7 @@ private:
 };
 std::vector<std::function<typename RegisteredFunctor::fct_type>> RegisteredFunctor::functionMap;
 
-class test1 : public RegisteredFunctor
+class test_vector : public RegisteredFunctor
 {
 	enum
 	{
@@ -335,18 +291,23 @@ class test1 : public RegisteredFunctor
 		e12 = (1 << 12), e13 = (1 << 13),
 		e14 = (1 << 14), e15 = (1 << 15),
 	};
-	typedef vector_t<float, e0 | e2 | e7 | e15>                  vector_type1;
-	typedef vector_t<long double, e0 | e1 | e2 | e7 | e13 | e15> vector_type2;
+	using vector_type1 = vector_t<float, e0 | e2 | e7 | e15>;
+	using vector_type2 = vector_t<float, e0 | e2 | e7 | e13 | e15>;
+	using vector_type3 = vector_t<long double, e0 | e1 | e2 | e7 | e13 | e15>;
 	static_assert(sizeof(vector_type1) == vector_type1::dimension_size * sizeof(vector_type1::scalar_type), "vector size is incorrect...");
-	static_assert(sizeof(vector_type2) == vector_type2::dimension_size * sizeof(vector_type2::scalar_type), "vector size is incorrect...");
+	//static_assert(sizeof(vector_type2) == vector_type2::dimension_size * sizeof(vector_type2::scalar_type), "vector size is incorrect...");
+	static_assert(sizeof(vector_type3) == vector_type3::dimension_size * sizeof(vector_type3::scalar_type), "vector size is incorrect...");
 
-	test1() : RegisteredFunctor(fct) {}
+	test_vector() : RegisteredFunctor(fct) {}
 	static void fct()
 	{
 		vector_type1 test1{ -1.0f,-1.0f,-1.0f,-1.0f }; // sets all 4 components
 		vector_type1 test2;
-		vector_type2 test3{ -1.0f,-1.0f }; // only sets components for e0 and e1, all other being 0.
+		vector_type2 test3;// { -1.0f, -1.0f }; // only sets components for e0 and e1, all other being 0.
 		vector_type2 test4;
+		vector_type3 test5{ -1.0f,-1.0f }; // only sets components for e0 and e1, all other being 0.
+		vector_type3 test6 = test1;
+		vector_type1 test7 = test5.project<vector_type1>(); // only e0 component is set to a non-zero value as e1 is not is vector_type1
 		vector_type1::scalar_type coeff1, coeff2;
 
 		const std::string input_filename = "../../tmp/test_input.in";
@@ -402,7 +363,6 @@ class test1 : public RegisteredFunctor
 					file << " " << test2.cget<e15>();
 				}
 			}
-
 			test3.get<e0>() = test1.cget<e0>();
 			//test3.get<e1>()  = test1.cget<e1>(); // this would be fine and would not have any effect! not doing it just to check explicitly data set in constructor
 			test3.get<e2>() = test1.cget<e2>();
@@ -413,14 +373,29 @@ class test1 : public RegisteredFunctor
 			//test4.get<e1>() = test2.cget<e1>(); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
 			test4.get<e2>() = test2.cget<e2>();
 			test4.get<e7>() = test2.cget<e7>();
-			test4.get<e13>() = test2.cget<e13>(); // this is fine even if test1 does not have any e1 component!
+			test4.get<e13>() = test2.cget<e13>(); // this is fine even if test1 does not have any e13 component!
 			test4.get<e15>() = test2.cget<e15>();
+
+			test5.get<e0>() = test1.cget<e0>();
+			//test5.get<e1>()  = test1.cget<e1>(); // this would be fine and would not have any effect! not doing it just to check explicitly data set in constructor
+			test5.get<e2>() = test1.cget<e2>();
+			test5.get<e7>() = test1.cget<e7>();
+			//test3.get<e13>() = test1.get<e13>(); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
+			test5.get<e15>() = test1.cget<e15>();
+			test6.get<e0>() = test2.cget<e0>();
+			//test4.get<e1>() = test2.cget<e1>(); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
+			test6.get<e2>() = test2.cget<e2>();
+			test6.get<e7>() = test2.cget<e7>();
+			test6.get<e13>() = test2.cget<e13>(); // this is fine even if test1 does not have any e1 component!
+			test6.get<e15>() = test2.cget<e15>();
 		}
 
-		vector_type2::scalar_type coeff1d = coeff1, coeff2d = coeff2;
+		vector_type3::scalar_type coeff1d = coeff1, coeff2d = coeff2;
 		auto test_result1 = coeff1 * test1 * coeff2 + test2;
-		auto test_result2 = coeff1d * test3 * coeff2d + test4;
-		//auto test_result3 = coeff1 * test1 * coeff2 + test4; // this will fail compilation (vector types are incompatible) ... eventually this should be fixed as it all fits into destination
+		auto test_result2 = coeff1 * test3 * coeff2 + test4;
+		auto test_result3 = coeff1d * test5 * coeff2d + test6;
+		//auto test_result4 = coeff1 * test1 * coeff2 + test4; // this will fail compilation (vector types are incompatible) ... eventually this should be fixed as it all fits into destination
+		auto test_result4 = test_result1 + test_result1;
 
 		// checking both const and non-const accessors
 		std::cout << "("
@@ -436,19 +411,28 @@ class test1 : public RegisteredFunctor
 			<< test_result1.get<e3>()
 			<< std::endl;
 
-		std::cout << to_string<out_t>(test_result1) << std::endl;
-		std::cout << to_string<out_t>(test_result2) << std::endl;
+		std::cout << "test_result1: " << to_string<out_t>(test_result1) << std::endl;
+		std::cout << "test_result2: " << to_string<out_t>(test_result2) << std::endl;
+		std::cout << "test_result3: " << to_string<out_t>(test_result3) << std::endl;
+		std::cout << "test_result4: " << to_string<out_t>(test_result4) << std::endl;
+		test_result4 = test_result1;
+		test_result4 += test_result4;
+		test_result4 *= coeff1;
+		test_result4 /= coeff2;
+		std::cout << "test_result1 (copied on 4): " << to_string<out_t>(test_result1) << std::endl;
+		std::cout << "test_result4 (modified 1): " << to_string<out_t>(test_result4) << std::endl;
+		std::cout << to_string<out_t>(test7) << std::endl;
 
 		std::cout << "... run test '" << instance.id << "d' to delete input file..." << std::endl;
 	}
 
-	static test1 instance;
+	static test_vector instance;
 };
-test1 test1::instance;
+test_vector test_vector::instance;
 
 //////////////////////////////////////////////////////////////////////////////
 
-class test2 : public RegisteredFunctor
+class test_clifford_algebra : public RegisteredFunctor
 {
 	enum
 	{
@@ -461,27 +445,35 @@ class test2 : public RegisteredFunctor
 	};
 	typedef bit_traits<0xAB> traits;
 
-	test2() : RegisteredFunctor(fct) {}
+	template<size_t value, size_t loop>
+	struct output_bit_mask
+	{
+		output_bit_mask(std::ostream& out)
+		{
+			static const char* const delimiter = ((loop == 0) ? "" : ",");
+			out << delimiter << value;
+		}
+	};
+	template<size_t value, size_t loop>
+	struct output_bit_index
+	{
+		output_bit_index(std::ostream& out)
+		{
+			static const char* const delimiter = ((loop == traits::get_bit<0>::value) ? "" : ",");
+			out << delimiter << value;
+		}
+	};
+
+
+	test_clifford_algebra() : RegisteredFunctor(fct) {}
 	static void fct()
 	{
 		std::cout << traits::value << " (" << traits::population_count << ")";
 		std::cout << " -> (";
-		static_for_each<0, traits::population_count, get_bit_helper<traits>, increment_bit_index_helper<traits>>::iterate(
-			[](size_t value, size_t cur_loop) -> void
-		{
-			char* delimiter = ((cur_loop == 0) ? "" : ",");
-			std::cout << delimiter << value;
-		}
-		);
+		for_each_bit<traits>::iterate<output_bit_mask>(std::cout);
 		std::cout << ")";
 		std::cout << " ~ (";
-		static_for_each<traits::get_bit<0>::value, traits::get_bit<traits::population_count>::value, get_bit_index_helper<traits>, next_bit_helper<traits>>::iterate(
-			[](size_t value, size_t cur_loop) -> void
-		{
-			char* delimiter = ((cur_loop == traits::get_bit<0>::value) ? "" : ",");
-			std::cout << delimiter << value;
-		}
-		);
+		for_each_bit_index<traits>::iterate<output_bit_index>(std::cout);
 		std::cout << ")" << std::endl;
 
 		std::cout << "((e0 ^ e2) ^ e1) \n\t= "
@@ -508,13 +500,13 @@ class test2 : public RegisteredFunctor
 			<< std::endl;
 	}
 
-	static test2 instance;
+	static test_clifford_algebra instance;
 };
-test2 test2::instance;
+test_clifford_algebra test_clifford_algebra::instance;
 
 //////////////////////////////////////////////////////////////////////////////
 
-class test3 : public RegisteredFunctor
+class test_multivector_space : public RegisteredFunctor
 {
 	//
 	// module_t
@@ -608,7 +600,7 @@ class test3 : public RegisteredFunctor
 	}
 	*/
 
-	test3() : RegisteredFunctor(fct) {}
+	test_multivector_space() : RegisteredFunctor(fct) {}
 	static void fct()
 	{
 		module_t<float, 1> bin0({
@@ -699,15 +691,15 @@ class test3 : public RegisteredFunctor
 			<< to_string<out_t>(bin9) << std::endl;
 
 		typedef uniform_multimodule_t<decltype(bin5), 4> uniform_multimodule_type;
-		uniform_multimodule_type multivec5_4({
-			uniform_multimodule_type::dimension,
+		uniform_multimodule_type multivec6_4({
+			uniform_multimodule_type::dimension, decltype(bin5)::dimension, 4
 		});
-		std::cout << decltype(multivec5_4)::dimension << std::endl;
-		std::cout << to_string<out_t>(multivec5_4) << std::endl;
+		std::cout << decltype(multivec6_4)::dimension << std::endl;
+		std::cout << to_string<out_t>(multivec6_4) << std::endl;
 	}
-	static test3 instance;
+	static test_multivector_space instance;
 };
-test3 test3::instance;
+test_multivector_space test_multivector_space::instance;
 
 int main()
 {
