@@ -303,7 +303,7 @@ class test_vector : public RegisteredFunctor
 	{
 		vector_type1 test1{ -1.0f,-1.0f,-1.0f,-1.0f }; // sets all 4 components
 		vector_type1 test2;
-		vector_type2 test3;// { -1.0f, -1.0f }; // only sets components for e0 and e1, all other being 0.
+		vector_type2 test3{ -1.0f,-1.0f }; // only sets components for e0 and e2, all other being 0.
 		vector_type2 test4;
 		vector_type3 test5{ -1.0f,-1.0f }; // only sets components for e0 and e1, all other being 0.
 		vector_type3 test6 = test1;
@@ -314,6 +314,8 @@ class test_vector : public RegisteredFunctor
 		int data = std::cin.get();
 		if (data == 'd')
 			std::remove(input_filename.c_str());
+		else
+			std::cin.unget();
 
 		{
 			auto file = std::fstream(input_filename, std::ios_base::in | std::ios_base::_Nocreate);
