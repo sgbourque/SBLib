@@ -44,5 +44,8 @@
     <ClInclude Include="Mathematics\canonical_components.h">
       <Filter>Header Files\Mathematics</Filter>
     </ClInclude>
+    <ClInclude Include="Mathematics\vector.h">
+      <Filter>Header Files\Mathematics</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

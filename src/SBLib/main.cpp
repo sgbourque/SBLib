@@ -1,166 +1,154 @@
 #include <Mathematics/binomial_coefficient.h>
-#include <Mathematics/canonical_components.h>
+#include <Mathematics/vector.h>
 #include <Traits/clifford_traits.h>
 #include <Traits/bit_traits.h>
 
 #define USING_STATIC_FOR_EACH_OUTPUT 0 // setting this to 1 will use very heavy static code (test)
+#define USING_TEST_MASK ~0u
+
+#define PRINT_DIM_0 1
+#define PRINT_DIM_1 1
+#define PRINT_DIM_2 1
+#define PRINT_DIM_3 1
+#define PRINT_DIM_4 1
+#define PRINT_DIM_5 1
+#define PRINT_DIM_6 1
+#define PRINT_DIM_7 1
 
 //
-// vector_t
+// combinations_t
 //
-template<typename scalar_t, size_t space_mask>
-struct vector_t
+template<size_t space_mask, size_t rank, size_t current_combination = 0>
+struct combinations_t
 {
-private:
-	using traits = bit_traits<space_mask>;
-
-	template<size_t subspace_mask>
-	struct get_traits_helper
-	{
-		using reference_type       = scalar_t&;
-		using const_reference_type = const scalar_t&;
-	};
-	template<>
-	struct get_traits_helper<0>
-	{
-		using reference_type       = scalar_t;
-		using const_reference_type = scalar_t;
-	};
-	template<size_t subspace_mask>
-	struct get_traits
-	{
-		static const size_t mask   = ( bit_traits<subspace_mask>::population_count == 1 ) ? (subspace_mask & space_mask) : 0;
-		using reference_type       = typename get_traits_helper<mask>::reference_type;
-		using const_reference_type = typename get_traits_helper<mask>::const_reference_type;
-	};
-
-	template<size_t subspace_mask>
-	constexpr auto get_helper() -> typename get_traits<subspace_mask>::reference_type
-	{
-		return components[traits::get_bit_index<subspace_mask>()];
-	}
-	template<>
-	constexpr auto get_helper<0>() -> typename get_traits<0>::reference_type
-	{
-		return scalar_t(0);
-	}
-	template<size_t subspace_mask>
-	constexpr auto get_helper() const -> typename get_traits<subspace_mask>::const_reference_type
-	{
-		return components[traits::get_bit_index<subspace_mask>()];
-	}
-	template<>
-	constexpr auto get_helper<0>() const -> typename get_traits<0>::const_reference_type
-	{
-		return scalar_t(0);
-	}
-
-	template<size_t value, size_t loop>
-	struct component_assign_helper
-	{
-		template<typename scalar_dest, size_t space_mask_dest, typename scalar_src, size_t space_mask_src>
-		component_assign_helper(vector_t<scalar_dest, space_mask_dest>& u, const vector_t<scalar_src, space_mask_src>& v)
-		{
-			static_assert( (value & space_mask) != 0, "Cannot assign value to orthogonal components of a vector." );
-			u.get<value>() = static_cast<scalar_dest>( v.get<value>() );
-		}
-	};
-
 public:
-	enum
+	enum : size_t
 	{
 		space_mask     = space_mask,
-		dimension_size = traits::population_count,
-	};
-	using components_type = typename canonical_components_t<scalar_t, dimension_size>              ;
-	using scalar_type     = typename canonical_components_t<scalar_t, dimension_size>::scalar_type;
-
-	vector_t() : components() {};
-	vector_t(const vector_t& v) : components(v.components) {};
-	explicit vector_t(const components_type& v) : components(v) {};
-	explicit vector_t(components_type&& v) : components(v) {};
-
-	template<typename... scalars>
-	explicit vector_t(scalars&&... coords) : components{std::forward<scalars>(coords)...} {}
-
-	template<typename alt_scalar_t, size_t alt_space_mask>
-	vector_t(const vector_t<alt_scalar_t, alt_space_mask>& v) : components()
-	{
-		using alt_traits = bit_traits<alt_space_mask>;
-		for_each_bit<alt_traits>::iterate<component_assign_helper>(*this, v);
+		dimension_size = bit_traits<space_mask>::population_count,
+		rank_size      = rank,
 	};
 
-	template<typename alt_scalar_t, size_t alt_space_mask>
-	vector_t<scalar_t, alt_space_mask> project() const
+private:
+	static const bool is_conjugate                   = (2 * rank_size > dimension_size);
+	static const bool is_self_conjugate              = (2 * rank_size == dimension_size);
+	static const bool is_self_conjugate_combinations = is_self_conjugate && (2 * current_combination < binomial_coefficient<dimension_size, rank_size>::value);
+	static const bool is_last_combinations           = (current_combination == binomial_coefficient<dimension_size, rank_size>::value);
+	static const bool is_inherited                   = (dimension_size > 1 ) && (current_combination >= binomial_coefficient<dimension_size, rank_size>::value - binomial_coefficient<dimension_size - 1, rank_size>::value);
+	static const bool is_self_inherited              = (dimension_size > 1) && (current_combination < binomial_coefficient<dimension_size - 1, rank_size - 1>::value);
+	enum : size_t
 	{
-		vector_t<alt_scalar_t, alt_space_mask> v;
-		using alt_traits = bit_traits<(alt_space_mask & space_mask)>;
-		for_each_bit<alt_traits>::iterate<component_assign_helper>(v, *this);
-		return std::move(v);
+		conjugate_rank        = dimension_size - rank_size,
+		conjugate_combination = binomial_coefficient<dimension_size, rank_size>::value - current_combination - 1,
+
+		next_rank_value        = is_last_combinations ? rank_size + 1 : rank_size,
+		next_combination_value = is_last_combinations ? 0 : current_combination + 1,
+
+		last_bit      = bit_traits<space_mask>::get_bit<dimension_size - 1>(),
+		subspace_mask = (space_mask & ~last_bit),
 	};
-	template<typename alt_vector_t>
-	alt_vector_t project() const
+	static_assert(rank_size <= dimension_size, "Invalid combination");
+	static_assert(current_combination < binomial_coefficient<dimension_size, rank_size>::value, "Invalid combination");
+	static_assert(is_conjugate || is_self_conjugate_combinations || is_inherited || is_self_inherited, "Unimplemented");
+public:
+	// This algorithm makes conjugate modules "hodge-natural" in the sense that *u ^ u = *1 for any combinations u.
+	enum : size_t
 	{
-		return project<alt_vector_t::scalar_type, alt_vector_t::space_mask>();
+		value =
+			is_conjugate ?
+			  space_mask & ~combinations_t<is_conjugate ? space_mask : 0, is_conjugate ? conjugate_rank : 0, is_conjugate ? current_combination : 0>::value
+			: is_self_conjugate_combinations ?
+			  space_mask & ~combinations_t<is_self_conjugate_combinations ? space_mask : 0, is_self_conjugate_combinations ? rank_size : 0, is_self_conjugate_combinations ? conjugate_combination : 0>::value
+			: is_inherited ?
+			  combinations_t<is_inherited ? subspace_mask : 0, is_inherited ? rank_size : 0, is_inherited ? binomial_coefficient<dimension_size - 1, rank_size>::value - conjugate_combination - 1 : 0>::value
+			: is_self_inherited ?
+			  bit_traits<space_mask>::get_bit<dimension_size - 1>() | combinations_t<is_self_inherited ? subspace_mask : 0, is_self_inherited ? rank_size - 1 : 0, is_self_inherited ? current_combination : 0>::value
+			: ~0uLL, // unimplemented
+	};
+	static_assert((value & space_mask) == value, "Incorrect combination");
+	static_assert(bit_traits<value>::population_count == rank_size, "Incorrect combination");
+	//static_assert( is_self_conjugate  || (value ^ combinations_t<is_self_conjugate ? 0 : space_mask, is_self_conjugate ? 0 : conjugate_rank, is_self_conjugate ? 0 : current_combination>::value) == space_mask, "Incorrect conjugate combination");
+	static_assert( !is_self_conjugate_combinations || (value ^ combinations_t<is_self_conjugate_combinations ? space_mask : 0, is_self_conjugate_combinations ? dimension_size - rank_size : 0, is_self_conjugate_combinations ? conjugate_combination : 0>::value) == space_mask, "Incorrect conjugate combination");
+};
+template<size_t space_mask>
+struct combinations_t<space_mask, 0, 0>
+{
+public:
+	enum : size_t
+	{
+		space_mask     = space_mask,
+		dimension_size = bit_traits<space_mask>::population_count,
+		rank_size      = 0,
 	};
 
+private:
+	enum : size_t
+	{
+		current_combination    = 0,
+		next_rank_value        = ( 0 == binomial_coefficient<dimension_size, rank_size>::value ) ? rank_size + 1 : rank_size,
+		next_combination_value = ( 0 == binomial_coefficient<dimension_size, rank_size>::value ) ? 0 : current_combination + 1,
+	};
+	static_assert(rank_size <= dimension_size, "Invalid combination");
+	static_assert(current_combination < binomial_coefficient<dimension_size, rank_size>::value, "Invalid combination");
 
-	template<size_t subspace_mask>
-	constexpr auto get() -> typename get_traits<subspace_mask>::reference_type
+public:
+	enum : size_t
 	{
-		return get_helper<get_traits<subspace_mask>::mask>();
-	}
-	template<size_t subspace_mask>
-	constexpr auto get() const
+		value = 0,
+	};
+	static_assert(bit_traits<value>::population_count == rank_size, "Incorrect combination");
+};
+template<size_t space_mask, size_t current_combination>
+struct combinations_t<space_mask, 1, current_combination>
+{
+public:
+	enum : size_t
 	{
-		return get_helper<get_traits<subspace_mask>::mask>();
-	}
-	template<size_t subspace_mask>
-	constexpr auto cget() const
-	{
-		return get<subspace_mask>();
-	}
+		space_mask     = space_mask,
+		dimension_size = bit_traits<space_mask>::population_count,
+		rank_size      = 1,
+	};
 
-	components_type components;
+private:
+	enum : size_t
+	{
+		next_rank_value = 0 == binomial_coefficient<dimension_size, rank_size>::value ? rank_size + 1 : rank_size,
+		next_combination_value = 0 == binomial_coefficient<dimension_size, rank_size>::value ? 0 : current_combination + 1,
+	};
+	static_assert(rank_size <= dimension_size, "Invalid combination");
+	static_assert(current_combination < binomial_coefficient<dimension_size, rank_size>::value, "Invalid combination");
+
+public:
+	enum : size_t
+	{
+		value = bit_traits<space_mask>::get_bit<current_combination>(),
+	};
+	static_assert(bit_traits<value>::population_count == rank_size, "Incorrect combination");
 };
 
+template<class traits>
+struct get_combination_helper
+{
+private:
+	template<size_t index> using get_combination_t = combinations_t<traits::space_mask, traits::rank_size, index>;
 
-template<typename scalar_t, size_t space_mask>
-const auto& operator *=(vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
-{
-	return u.components *= scale;
-}
-template<typename scalar_t, size_t space_mask>
-auto operator *(const vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
-{
-	return vector_t<scalar_t, space_mask>(std::move(u.components * scale));
-}
-template<typename scalar_t, size_t space_mask>
-auto operator *(const scalar_t& scale, const vector_t<scalar_t, space_mask>& v)
-{
-	return std::move(v * scale);
-}
-template<typename scalar_t, size_t space_mask>
-const auto& operator /=(vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
-{
-	return u.components /= scale;
-}
-template<typename scalar_t, size_t space_mask>
-auto operator /(const vector_t<scalar_t, space_mask>& u, const scalar_t& scale)
-{
-	return vector_t<scalar_t, space_mask>(std::move(v.components / scale));
-}
-template<typename scalar_t, size_t space_mask>
-const auto& operator +=(vector_t<scalar_t, space_mask>& u, vector_t<scalar_t, space_mask>& v)
-{
-	return u.components += v.components;
-}
-template<typename scalar_t, size_t space_mask>
-auto operator +(const vector_t<scalar_t, space_mask>& u, const vector_t<scalar_t, space_mask>& v)
-{
-	return vector_t<scalar_t, space_mask>(std::move(u.components + v.components));
-}
+public:
+	template<size_t index>
+	struct get_helper
+	{
+		enum : size_t
+		{
+			value = get_combination_t<index>::value,
+		};
+	};
 
+	template<size_t index>
+	static constexpr size_t get()
+	{
+		return get_helper<index>::value;
+	}
+};
+template<typename combinations_traits_t> struct for_each_combination : static_for_each<0, binomial_coefficient<combinations_traits_t::dimension_size, combinations_traits_t::rank_size>::value, get_combination_helper<combinations_traits_t>, increment_index_helper<combinations_traits_t>> {};
 
 //template<typename scalar_t, size_t subspace_mask0, ...>
 //struct multivector_t
@@ -169,7 +157,7 @@ auto operator +(const vector_t<scalar_t, space_mask>& u, const vector_t<scalar_t
 //};
 
 
-
+#if 1 // help collapsing
 //
 //
 // Tests...
@@ -277,6 +265,173 @@ private:
 	static std::vector<std::function<fct_type>> functionMap;
 };
 std::vector<std::function<typename RegisteredFunctor::fct_type>> RegisteredFunctor::functionMap;
+#endif // #if 1 // help collapsing
+
+class test_combination : public RegisteredFunctor
+{
+	enum
+	{
+		e0 = (1 << 0), e1 = (1 << 1),
+		e2 = (1 << 2), e3 = (1 << 3),
+		e4 = (1 << 4), e5 = (1 << 5),
+		e6 = (1 << 6), e7 = (1 << 7),
+		e8 = (1 << 8), e9 = (1 << 9),
+		e10 = (1 << 10), e11 = (1 << 11),
+		e12 = (1 << 12), e13 = (1 << 13),
+		e14 = (1 << 14), e15 = (1 << 15),
+		e16 = (1 << 16), e17 = (1 << 17),
+
+		E0 = 0,
+		E1 = (e2),
+		E2 = (e2 | e3),
+		E3 = (e2 | e3 | e5),
+		E4 = (e2 | e3 | e5 | e7),
+		E5 = (e2 | e3 | e5 | e7 | e11),
+		E6 = (e2 | e3 | e5 | e7 | e11 | e13),
+		E7 = (e2 | e3 | e5 | e7 | e11 | e13 | e17),
+	};
+
+	template<size_t space_mask>
+	struct output_combination
+	{
+	private:
+		template<size_t bit_mask, size_t loop>
+		struct do_action_internal
+		{
+			do_action_internal(std::ostream& out)
+			{
+				const std::string delimiter = (loop == 0) ? "" : "^";
+				out << delimiter << "e" << bit_traits<space_mask>::get_mask_index<bit_mask>();
+			}
+		};
+
+	public:
+		template<size_t value, size_t loop>
+		struct do_action
+		{
+			do_action(std::ostream& out)
+			{
+				using traits = bit_traits<value>;
+				out << "\t\t";
+				for_each_bit<traits>::iterate<do_action_internal>(out);
+				out << std::endl;
+			}
+		};
+	};
+
+	test_combination() : RegisteredFunctor(fct) {}
+	static void fct()
+	{
+		// ( 0 )
+		// ( 0 )( 1 )
+		// ( 0 )( 1 <|> 2 )( 3 )
+		// ( 0 )( 1 2 | 4 )<>( 6 5 | 3 )( 7 )
+		// ( 0 )( 1 2 4 | 8 )( 9 10 12 <|> 6 5 3 )( 14 13 11 | 7 )( 15 )
+		// ...
+
+#if PRINT_DIM_0
+		std::cout << "Dim = 0:" << std::endl;
+		std::cout << "\tRank = 0:" << std::endl;
+		for_each_combination<combinations_t<E0, 0>>::iterate<output_combination<E0>::do_action>(std::cout);
+#endif // #if PRINT_DIM_0
+#if PRINT_DIM_1
+		std::cout << "Dim = 1:" << std::endl;
+		std::cout << "\tRank = 0:" << std::endl;
+		for_each_combination<combinations_t<E1, 0>>::iterate<output_combination<E1>::do_action>(std::cout);
+		std::cout << "\tRank = 1:" << std::endl;
+		for_each_combination<combinations_t<E1, 1>>::iterate<output_combination<E1>::do_action>(std::cout);
+#endif // #if PRINT_DIM_1
+#if PRINT_DIM_2
+		std::cout << "Dim = 2:" << std::endl;
+		std::cout << "\tRank = 0:" << std::endl;
+		for_each_combination<combinations_t<E2, 0>>::iterate<output_combination<E2>::do_action>(std::cout);
+		std::cout << "\tRank = 1:" << std::endl;
+		for_each_combination<combinations_t<E2, 1>>::iterate<output_combination<E2>::do_action>(std::cout);
+		std::cout << "\tRank = 2:" << std::endl;
+		for_each_combination<combinations_t<E2, 2>>::iterate<output_combination<E2>::do_action>(std::cout);
+#endif // #if PRINT_DIM_2
+#if PRINT_DIM_3
+		std::cout << "Dim = 3:" << std::endl;
+		std::cout << "\tRank = 0:" << std::endl;
+		for_each_combination<combinations_t<E3, 0>>::iterate<output_combination<E3>::do_action>(std::cout);
+		std::cout << "\tRank = 1:" << std::endl;
+		for_each_combination<combinations_t<E3, 1>>::iterate<output_combination<E3>::do_action>(std::cout);
+		std::cout << "\tRank = 2:" << std::endl;
+		for_each_combination<combinations_t<E3, 2>>::iterate<output_combination<E3>::do_action>(std::cout);
+		std::cout << "\tRank = 3:" << std::endl;
+		for_each_combination<combinations_t<E3, 3>>::iterate<output_combination<E3>::do_action>(std::cout);
+#endif // #if PRINT_DIM_3
+#if PRINT_DIM_4
+		std::cout << "Dim = 4:" << std::endl;
+		std::cout << "\tRank = 0:" << std::endl;
+		for_each_combination<combinations_t<E4, 0>>::iterate<output_combination<E4>::do_action>(std::cout);
+		std::cout << "\tRank = 1:" << std::endl;
+		for_each_combination<combinations_t<E4, 1>>::iterate<output_combination<E4>::do_action>(std::cout);
+		std::cout << "\tRank = 2:" << std::endl;
+		for_each_combination<combinations_t<E4, 2>>::iterate<output_combination<E4>::do_action>(std::cout);
+		std::cout << "\tRank = 3:" << std::endl;
+		for_each_combination<combinations_t<E4, 3>>::iterate<output_combination<E4>::do_action>(std::cout);
+		std::cout << "\tRank = 4:" << std::endl;
+		for_each_combination<combinations_t<E4, 4>>::iterate<output_combination<E4>::do_action>(std::cout);
+#endif // #if PRINT_DIM_4
+#if PRINT_DIM_5
+		std::cout << "Dim = 5:" << std::endl;
+		std::cout << "\tRank = 0:" << std::endl;
+		for_each_combination<combinations_t<E5, 0>>::iterate<output_combination<E5>::do_action>(std::cout);
+		std::cout << "\tRank = 1:" << std::endl;
+		for_each_combination<combinations_t<E5, 1>>::iterate<output_combination<E5>::do_action>(std::cout);
+		std::cout << "\tRank = 2:" << std::endl;
+		for_each_combination<combinations_t<E5, 2>>::iterate<output_combination<E5>::do_action>(std::cout);
+		std::cout << "\tRank = 3:" << std::endl;
+		for_each_combination<combinations_t<E5, 3>>::iterate<output_combination<E5>::do_action>(std::cout);
+		std::cout << "\tRank = 4:" << std::endl;
+		for_each_combination<combinations_t<E5, 4>>::iterate<output_combination<E5>::do_action>(std::cout);
+		std::cout << "\tRank = 5:" << std::endl;
+		for_each_combination<combinations_t<E5, 5>>::iterate<output_combination<E5>::do_action>(std::cout);
+#endif // #if PRINT_DIM_5
+#if PRINT_DIM_6
+		std::cout << "Dim = 6:" << std::endl;
+		std::cout << "\tRank = 0:" << std::endl;
+		for_each_combination<combinations_t<E6, 0>>::iterate<output_combination<E6>::do_action>(std::cout);
+		std::cout << "\tRank = 1:" << std::endl;
+		for_each_combination<combinations_t<E6, 1>>::iterate<output_combination<E6>::do_action>(std::cout);
+		std::cout << "\tRank = 2:" << std::endl;
+		for_each_combination<combinations_t<E6, 2>>::iterate<output_combination<E6>::do_action>(std::cout);
+		std::cout << "\tRank = 3:" << std::endl;
+		for_each_combination<combinations_t<E6, 3>>::iterate<output_combination<E6>::do_action>(std::cout);
+		std::cout << "\tRank = 4:" << std::endl;
+		for_each_combination<combinations_t<E6, 4>>::iterate<output_combination<E6>::do_action>(std::cout);
+		std::cout << "\tRank = 5:" << std::endl;
+		for_each_combination<combinations_t<E6, 5>>::iterate<output_combination<E6>::do_action>(std::cout);
+		std::cout << "\tRank = 6:" << std::endl;
+		for_each_combination<combinations_t<E6, 6>>::iterate<output_combination<E6>::do_action>(std::cout);
+#endif // #if PRINT_DIM_6
+#if PRINT_DIM_7
+		std::cout << "Dim = 7:" << std::endl;
+		std::cout << "\tRank = 0:" << std::endl;
+		for_each_combination<combinations_t<E7, 0>>::iterate<output_combination<E7>::do_action>(std::cout);
+		std::cout << "\tRank = 1:" << std::endl;
+		for_each_combination<combinations_t<E7, 1>>::iterate<output_combination<E7>::do_action>(std::cout);
+		std::cout << "\tRank = 2:" << std::endl;
+		for_each_combination<combinations_t<E7, 2>>::iterate<output_combination<E7>::do_action>(std::cout);
+		std::cout << "\tRank = 3:" << std::endl;
+		for_each_combination<combinations_t<E7, 3>>::iterate<output_combination<E7>::do_action>(std::cout);
+		std::cout << "\tRank = 4:" << std::endl;
+		for_each_combination<combinations_t<E7, 4>>::iterate<output_combination<E7>::do_action>(std::cout);
+		std::cout << "\tRank = 5:" << std::endl;
+		for_each_combination<combinations_t<E7, 5>>::iterate<output_combination<E7>::do_action>(std::cout);
+		std::cout << "\tRank = 6:" << std::endl;
+		for_each_combination<combinations_t<E7, 6>>::iterate<output_combination<E7>::do_action>(std::cout);
+		std::cout << "\tRank = 6:" << std::endl;
+		for_each_combination<combinations_t<E7, 7>>::iterate<output_combination<E7>::do_action>(std::cout);
+#endif // #if PRINT_DIM_7
+	}
+	static test_combination instance;
+};
+#if (USING_TEST_MASK & 1) != 0
+test_combination test_combination::instance;
+#endif // #if (USING_TEST_MASK & 1) != 0
+
 
 class test_vector : public RegisteredFunctor
 {
@@ -430,7 +585,10 @@ class test_vector : public RegisteredFunctor
 
 	static test_vector instance;
 };
+#if (USING_TEST_MASK & 2)  != 0
 test_vector test_vector::instance;
+#endif // #if (USING_TEST_MASK & 2) != 0
+
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -504,7 +662,10 @@ class test_clifford_algebra : public RegisteredFunctor
 
 	static test_clifford_algebra instance;
 };
+#if (USING_TEST_MASK & 4) != 0
 test_clifford_algebra test_clifford_algebra::instance;
+#endif // #if (USING_TEST_MASK & 4) != 0
+
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -701,21 +862,32 @@ class test_multivector_space : public RegisteredFunctor
 	}
 	static test_multivector_space instance;
 };
+#if (USING_TEST_MASK & 8) != 0
 test_multivector_space test_multivector_space::instance;
+#endif // #if (USING_TEST_MASK & 8) != 0
 
 int main()
 {
 	bool quit = false;
+	size_t testCase = ~0uLL;
 	do
 	{
-		size_t testCase = ~0u;
-		std::cout << "Enter test case [0 - " << RegisteredFunctor::size() - 1 << "] or 'q' to quit : ";
-		std::cin >> testCase;
-		while (!std::cin.good())
+		if (RegisteredFunctor::size() > 1)
 		{
-			std::cin.clear();
-			int data = std::cin.get();
-			quit = (data == 'q');
+			testCase = ~0uLL;
+			std::cout << "Enter test case [0 - " << RegisteredFunctor::size() - 1 << "] or 'q' to quit : ";
+			std::cin >> testCase;
+			while (!std::cin.good())
+			{
+				std::cin.clear();
+				int data = std::cin.get();
+				quit = (data == 'q');
+			}
+		}
+		else
+		{
+			testCase = ~testCase;
+			quit = (testCase != 0);
 		}
 
 		if (quit)
@@ -726,4 +898,7 @@ int main()
 		std::cout << std::endl;
 	}
 	while (std::cin.good() && !quit);
+
+	if (RegisteredFunctor::size() < 2)
+		std::cin.get();
 }

@@ -142,24 +142,6 @@ struct get_bit_helper
 		return get_helper<index>::value;
 	}
 };
-template<class traits>
-struct increment_bit_index_helper
-{
-	template<size_t index>
-	struct increment_helper
-	{
-		enum : size_t
-		{
-			value = index + 1,
-		};
-	};
-
-	template<size_t index>
-	static constexpr size_t increment()
-	{
-		return increment_helper<index>::value;
-	}
-};
 
 template<class traits>
 struct get_bit_index_helper
@@ -204,7 +186,7 @@ struct next_bit_helper
 	}
 };
 
-template<typename bit_traits_t> struct for_each_bit : static_for_each<0, bit_traits_t::population_count, get_bit_helper<bit_traits_t>, increment_bit_index_helper<bit_traits_t>> {};
+template<typename bit_traits_t> struct for_each_bit : static_for_each<0, bit_traits_t::population_count, get_bit_helper<bit_traits_t>, increment_index_helper<bit_traits_t>> {};
 template<typename bit_traits_t> struct for_each_bit_index
 {
 	template<template<size_t, size_t> class fct_type, typename... type_t>
