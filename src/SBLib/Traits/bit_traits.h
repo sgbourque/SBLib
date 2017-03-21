@@ -66,7 +66,7 @@ public:
 		return bit_mask<index>::value;
 	}
 	template<size_t bit_value>
-	static constexpr size_t get_bit_index()
+	static constexpr size_t get_bit_component()
 	{
 		return bit_index<bit_value>::value;
 	}
@@ -113,7 +113,7 @@ public:
 		return bit_mask<index>::value;
 	}
 	template<size_t bit_value>
-	static constexpr size_t get_bit_index()
+	static constexpr size_t get_bit_component()
 	{
 		return bit_index<bit_value>::value;
 	}
@@ -127,6 +127,7 @@ public:
 template<class traits>
 struct get_bit_helper
 {
+private:
 	template<size_t index>
 	struct get_helper
 	{
@@ -136,6 +137,7 @@ struct get_bit_helper
 		};
 	};
 
+public:
 	template<size_t index>
 	static constexpr size_t get()
 	{
@@ -144,8 +146,9 @@ struct get_bit_helper
 };
 
 template<class traits>
-struct get_bit_index_helper
+struct get_bit_component_helper
 {
+private:
 	template<size_t bit>
 	struct get_helper
 	{
@@ -155,6 +158,7 @@ struct get_bit_index_helper
 		};
 	};
 
+public:
 	template<size_t bit>
 	static constexpr size_t get()
 	{
@@ -192,6 +196,6 @@ template<typename bit_traits_t> struct for_each_bit_index
 	template<template<size_t, size_t> class fct_type, typename... type_t>
 	static void iterate(type_t&&... types)
 	{
-		static_for_each<bit_traits_t::get_bit<0>(), bit_traits_t::get_bit<bit_traits_t::population_count>(), get_bit_index_helper<bit_traits_t>, next_bit_helper<bit_traits_t>>::iterate<fct_type>(types...);
+		static_for_each<bit_traits_t::get_bit<0>(), bit_traits_t::get_bit<bit_traits_t::population_count>(), get_bit_component_helper<bit_traits_t>, next_bit_helper<bit_traits_t>>::iterate<fct_type>(types...);
 	}
 };

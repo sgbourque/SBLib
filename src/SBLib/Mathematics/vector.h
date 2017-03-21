@@ -34,7 +34,7 @@ private:
 	template<size_t subspace_mask>
 	constexpr auto get_helper() -> typename get_traits<subspace_mask>::reference_type
 	{
-		return components[traits::get_bit_index<subspace_mask>()];
+		return components[traits::get_bit_component<subspace_mask>()];
 	}
 	template<>
 	constexpr auto get_helper<0>() -> typename get_traits<0>::reference_type
@@ -44,7 +44,7 @@ private:
 	template<size_t subspace_mask>
 	constexpr auto get_helper() const -> typename get_traits<subspace_mask>::const_reference_type
 	{
-		return components[traits::get_bit_index<subspace_mask>()];
+		return components[traits::get_bit_component<subspace_mask>()];
 	}
 	template<>
 	constexpr auto get_helper<0>() const -> typename get_traits<0>::const_reference_type
