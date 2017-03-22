@@ -83,16 +83,14 @@ public:
 	template<typename alt_scalar_t, size_t alt_space_mask>
 	vector_t(const vector_t<alt_scalar_t, alt_space_mask>& v) : components()
 	{
-		using alt_traits = bit_traits<alt_space_mask>;
-		for_each_bit<alt_traits>::iterate<component_assign_helper>(*this, v);
+		for_each_bit<alt_space_mask>::iterate<component_assign_helper>(*this, v);
 	};
 
 	template<typename alt_scalar_t, size_t alt_space_mask>
 	vector_t<scalar_t, alt_space_mask> project() const
 	{
 		vector_t<alt_scalar_t, alt_space_mask> v;
-		using alt_traits = bit_traits<(alt_space_mask & space_mask)>;
-		for_each_bit<alt_traits>::iterate<component_assign_helper>(v, *this);
+		for_each_bit<(alt_space_mask & space_mask)>::iterate<component_assign_helper>(v, *this);
 		return std::move(v);
 	};
 	template<typename alt_vector_t>

@@ -149,6 +149,7 @@
     <ClInclude Include="Algorithms\static_for_each.h" />
     <ClInclude Include="Mathematics\binomial_coefficient.h" />
     <ClInclude Include="Mathematics\canonical_components.h" />
+    <ClInclude Include="Mathematics\combinations.h" />
     <ClInclude Include="Mathematics\vector.h" />
     <ClInclude Include="Traits\bit_traits.h" />
     <ClInclude Include="Traits\clifford_traits.h" />
