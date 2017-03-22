@@ -44,10 +44,10 @@
     <ClInclude Include="Mathematics\canonical_components.h">
       <Filter>Header Files\Mathematics</Filter>
     </ClInclude>
-    <ClInclude Include="Mathematics\vector.h">
+    <ClInclude Include="Mathematics\combinations.h">
       <Filter>Header Files\Mathematics</Filter>
     </ClInclude>
-    <ClInclude Include="Mathematics\combinations.h">
+    <ClInclude Include="Mathematics\multivector.h">
       <Filter>Header Files\Mathematics</Filter>
     </ClInclude>
   </ItemGroup>

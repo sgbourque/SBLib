@@ -1,6 +1,6 @@
 #include <Mathematics/binomial_coefficient.h>
 #include <Mathematics/combinations.h>
-#include <Mathematics/vector.h>
+#include <Mathematics/multivector.h>
 #include <Traits/clifford_traits.h>
 #include <Traits/bit_traits.h>
 
@@ -8,12 +8,67 @@
 #define USING_TEST_MASK					~0u
 #define USING_STANDARD_BASIS        	0
 
+template<size_t subspace_mask, size_t loop>
+struct wedge
+{
+private:
+	template<size_t subspace_mask2, size_t loop2>
+	struct wedge2
+	{
+		template<typename scalar_t>
+		struct assign
+		{
+			template<int sign>
+			static constexpr void alternate_multiply(scalar_t, const scalar_t&, const scalar_t&) {};
+		};
+		template<typename scalar_t>
+		struct assign<scalar_t&>
+		{
+			template<int sign>
+			static constexpr void alternate_multiply(scalar_t& result, const scalar_t& u, const scalar_t& v);
 
-//template<typename scalar_t, size_t subspace_mask0, ...>
-//struct multivector_t
-//{
-//
-//};
+			template<>
+			static constexpr void alternate_multiply<+1>(scalar_t& result, const scalar_t& u, const scalar_t& v)
+			{
+				result += u * v;
+			}
+			template<>
+			static constexpr void alternate_multiply<-1>(scalar_t& result, const scalar_t& u, const scalar_t& v)
+			{
+				result -= u * v;
+			}
+		};
+
+	public:
+		template<typename scalar_t, size_t space_mask0, size_t space_mask2, size_t rank_size0, size_t rank_size2>
+		wedge2(multivector_t<scalar_t, space_mask0, rank_size0>& result, const scalar_t& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+		{
+			using ref_type = decltype( result.get<(subspace_mask ^ subspace_mask2)>() );
+			assign<ref_type>::alternate_multiply<alternating_traits<subspace_mask, subspace_mask2>::sign>(result.get<(subspace_mask ^ subspace_mask2)>(), u, v.get<subspace_mask2>());
+		}
+	};
+
+public:
+	template<typename scalar_t, size_t space_mask0, size_t space_mask1, size_t space_mask2, size_t rank_size0, size_t rank_size1, size_t rank_size2>
+	wedge(multivector_t<scalar_t, space_mask0, rank_size0>& result, const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+	{
+		for_each_combination< select_combinations<space_mask2, rank_size2> >::iterate< wedge2 >(result, u.get<subspace_mask>(), v);
+	}
+};
+
+
+template<typename scalar_t, size_t space_mask1, size_t space_mask2, size_t rank_size1, size_t rank_size2>
+auto operator ^(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+{
+	enum : size_t
+	{
+		space_mask = (space_mask1 | space_mask2),
+		rank_size = (rank_size1 + rank_size2) <= bit_traits<space_mask>::population_count ? (rank_size1 + rank_size2) : 0,
+	};
+	multivector_t<scalar_t, space_mask, rank_size> result;
+	for_each_combination< select_combinations<space_mask1, rank_size1> >::iterate< wedge >(result, u, v);
+	return std::move(result);
+}
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -297,15 +352,66 @@ test_combination test_combination::instance;
 
 //////////////////////////////////////////////////////////////////////////////
 
+class test_multivector : public RegisteredFunctor
+{
+	enum
+	{
+		e0  = (1 << 0),  e1  = (1 << 1),
+		e2  = (1 << 2),  e3  = (1 << 3),
+		e4  = (1 << 4),  e5  = (1 << 5),
+		e6  = (1 << 6),  e7  = (1 << 7),
+		e8  = (1 << 8),  e9  = (1 << 9),
+		e10 = (1 << 10), e11 = (1 << 11),
+		e12 = (1 << 12), e13 = (1 << 13),
+		e14 = (1 << 14), e15 = (1 << 15),
+	};
+	using multivector_type1 = multivector_t<float, e0 | e1 | e2, 1>;
+	using multivector_type2 = multivector_t<float, e0 | e1 | e2, 2>;
+	using multivector_type3 = multivector_t<float, e0 | e1 | e2, 3>;
+
+	test_multivector() : RegisteredFunctor(fct) {}
+	static void fct()
+	{
+		multivector_type1 test1{ cos(0.4f), -sin(0.4f), 0.0f };
+		multivector_type1 test2{ sin(0.4f),  cos(0.4f), 0.0f };
+		multivector_type1 test3{    0.0f,      0.0f,    1.0f};
+
+		std::cin >> test1.get<e0>();
+		std::cin >> test1.get<e1>();
+		std::cin >> test1.get<e2>();
+		std::cin >> test2.get<e0>();
+		std::cin >> test2.get<e1>();
+		std::cin >> test2.get<e2>();
+		std::cin >> test3.get<e0>();
+		std::cin >> test3.get<e1>();
+		std::cin >> test3.get<e2>();
+
+		multivector_type2 test4 = (test1 ^ test2);
+		std::cout << test4.get<e1^e2>();
+		std::cout << "," << test4.get<e0^e2>();
+		std::cout << "," << test4.get<e0^e1>() << std::endl;
+
+		multivector_type3 test5 = ((test1 ^ test2) ^ test3);
+		std::cout << test5.get<e0^e1^e2>() << std::endl;
+	}
+
+	static test_multivector instance;
+};
+#if (USING_TEST_MASK & 2)  != 0
+test_multivector test_multivector::instance;
+#endif // #if (USING_TEST_MASK & 2) != 0
+
+//////////////////////////////////////////////////////////////////////////////
+
 class test_vector : public RegisteredFunctor
 {
 	enum
 	{
-		e0 = (1 << 0), e1 = (1 << 1),
-		e2 = (1 << 2), e3 = (1 << 3),
-		e4 = (1 << 4), e5 = (1 << 5),
-		e6 = (1 << 6), e7 = (1 << 7),
-		e8 = (1 << 8), e9 = (1 << 9),
+		e0  = (1 << 0),  e1 = (1 << 1),
+		e2  = (1 << 2),  e3 = (1 << 3),
+		e4  = (1 << 4),  e5 = (1 << 5),
+		e6  = (1 << 6),  e7 = (1 << 7),
+		e8  = (1 << 8),  e9 = (1 << 9),
 		e10 = (1 << 10), e11 = (1 << 11),
 		e12 = (1 << 12), e13 = (1 << 13),
 		e14 = (1 << 14), e15 = (1 << 15),
@@ -449,9 +555,9 @@ class test_vector : public RegisteredFunctor
 
 	static test_vector instance;
 };
-#if (USING_TEST_MASK & 2)  != 0
+#if (USING_TEST_MASK & 4)  != 0
 test_vector test_vector::instance;
-#endif // #if (USING_TEST_MASK & 2) != 0
+#endif // #if (USING_TEST_MASK & 4) != 0
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -520,9 +626,9 @@ class test_clifford_algebra : public RegisteredFunctor
 
 	static test_clifford_algebra instance;
 };
-#if (USING_TEST_MASK & 4) != 0
+#if (USING_TEST_MASK & 8) != 0
 test_clifford_algebra test_clifford_algebra::instance;
-#endif // #if (USING_TEST_MASK & 4) != 0
+#endif // #if (USING_TEST_MASK & 8) != 0
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -719,9 +825,9 @@ class test_multivector_space : public RegisteredFunctor
 	}
 	static test_multivector_space instance;
 };
-#if (USING_TEST_MASK & 8) != 0
+#if (USING_TEST_MASK & 16) != 0
 test_multivector_space test_multivector_space::instance;
-#endif // #if (USING_TEST_MASK & 8) != 0
+#endif // #if (USING_TEST_MASK & 16) != 0
 
 //////////////////////////////////////////////////////////////////////////////
 

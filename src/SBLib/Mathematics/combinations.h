@@ -1,6 +1,7 @@
 #pragma once
 #include <Algorithms/static_for_each.h>
 #include <Mathematics/binomial_coefficient.h>
+#include <Traits/bit_traits.h>
 
 //
 // combinations

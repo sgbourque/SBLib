@@ -1,21 +1,11 @@
 #pragma once
-#include <functional>
 
 struct increment_index_helper
 {
 	template<size_t index>
-	struct increment_helper
-	{
-		enum : size_t
-		{
-			value = index + 1,
-		};
-	};
-
-	template<size_t index>
 	static constexpr size_t increment()
 	{
-		return increment_helper<index>::value;
+		return index + 1;
 	}
 };
 struct get_index_helper
