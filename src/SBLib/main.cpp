@@ -4,72 +4,171 @@
 #include <Traits/clifford_traits.h>
 #include <Traits/bit_traits.h>
 
-#define USING_STATIC_FOR_EACH_OUTPUT	0 // setting this to 1 will use very heavy static code (test)
+#define USING_STATIC_FOR_EACH_OUTPUT	1 // setting this to 1 will use very heavy static code (test)
 #define USING_TEST_MASK					~0u
 #define USING_STANDARD_BASIS        	0
 
+
+//
+// Wedge product
+//
 template<size_t subspace_mask, size_t loop>
-struct wedge
+struct wedge_product_helper
 {
 private:
 	template<size_t subspace_mask2, size_t loop2>
-	struct wedge2
+	struct wedge_product_internal
 	{
 		template<typename scalar_t>
 		struct assign
 		{
-			template<int sign>
-			static constexpr void alternate_multiply(scalar_t, const scalar_t&, const scalar_t&) {};
+			template<int sign> static constexpr void alternate_multiply(scalar_t, const scalar_t&, const scalar_t&) {}; // nothing to do
 		};
 		template<typename scalar_t>
 		struct assign<scalar_t&>
 		{
-			template<int sign>
-			static constexpr void alternate_multiply(scalar_t& result, const scalar_t& u, const scalar_t& v);
-
-			template<>
-			static constexpr void alternate_multiply<+1>(scalar_t& result, const scalar_t& u, const scalar_t& v)
-			{
-				result += u * v;
-			}
-			template<>
-			static constexpr void alternate_multiply<-1>(scalar_t& result, const scalar_t& u, const scalar_t& v)
-			{
-				result -= u * v;
-			}
+			template<int sign> static constexpr void alternate_multiply    (scalar_t& result, const scalar_t& u, const scalar_t& v); // should not be called
+			template<>         static constexpr void alternate_multiply<+1>(scalar_t& result, const scalar_t& u, const scalar_t& v) { result += u * v; }
+			template<>         static constexpr void alternate_multiply<-1>(scalar_t& result, const scalar_t& u, const scalar_t& v) { result -= u * v; }
 		};
 
 	public:
 		template<typename scalar_t, size_t space_mask0, size_t space_mask2, size_t rank_size0, size_t rank_size2>
-		wedge2(multivector_t<scalar_t, space_mask0, rank_size0>& result, const scalar_t& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+		wedge_product_internal(multivector_t<scalar_t, space_mask0, rank_size0>& result, const scalar_t& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
 		{
+			using traits = alternating_traits<subspace_mask, subspace_mask2>;
 			using ref_type = decltype( result.get<(subspace_mask ^ subspace_mask2)>() );
-			assign<ref_type>::alternate_multiply<alternating_traits<subspace_mask, subspace_mask2>::sign>(result.get<(subspace_mask ^ subspace_mask2)>(), u, v.get<subspace_mask2>());
+			assign<ref_type>::alternate_multiply<traits::sign>(result.get<(subspace_mask ^ subspace_mask2)>(), u, v.get<subspace_mask2>());
 		}
 	};
 
 public:
 	template<typename scalar_t, size_t space_mask0, size_t space_mask1, size_t space_mask2, size_t rank_size0, size_t rank_size1, size_t rank_size2>
-	wedge(multivector_t<scalar_t, space_mask0, rank_size0>& result, const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+	wedge_product_helper(multivector_t<scalar_t, space_mask0, rank_size0>& result, const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
 	{
-		for_each_combination< select_combinations<space_mask2, rank_size2> >::iterate< wedge2 >(result, u.get<subspace_mask>(), v);
+		for_each_combination< select_combinations<space_mask2, rank_size2> >::iterate<wedge_product_internal>(result, u.get<subspace_mask>(), v);
 	}
 };
-
-
+//
+// Generic version
+//
 template<typename scalar_t, size_t space_mask1, size_t space_mask2, size_t rank_size1, size_t rank_size2>
-auto operator ^(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+auto wedge_product(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
 {
-	enum : size_t
-	{
-		space_mask = (space_mask1 | space_mask2),
-		rank_size = (rank_size1 + rank_size2) <= bit_traits<space_mask>::population_count ? (rank_size1 + rank_size2) : 0,
-	};
-	multivector_t<scalar_t, space_mask, rank_size> result;
-	for_each_combination< select_combinations<space_mask1, rank_size1> >::iterate< wedge >(result, u, v);
+	multivector_t<scalar_t, (space_mask1 | space_mask2), (rank_size1 + rank_size2)> result;
+	for_each_combination< select_combinations<space_mask1, rank_size1> >::iterate<wedge_product_helper>(result, u, v);
 	return std::move(result);
 }
 
+//
+// HACK ALERT : temporary test code for optimization check.
+// Once optimized, double hodge on dot product cause about 44% performance loss (13 instructions instead of 9), which is bad.
+// This needs to be fixed.
+//
+// Also, hodge isn't even defined yet so using it here is ackward...
+//
+template<typename scalar_t, size_t space_mask>
+auto wedge_product(const vector_t<scalar_t, space_mask>& u, const multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size - 1>& v)
+{
+	using multivec_t = multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size>;
+	multivec_t result(multivec_t::UNINITIALIZED);
+	result.components.container[0] = DirectX::XMVector3Dot(u.components.container[0], (*v).components.container[0]);
+	for (size_t batch = 1; batch != u.components.container.size(); ++batch)
+		result.components.container[0] = DirectX::XMVectorAdd(result.components.container[0], DirectX::XMVector3Dot(u.components.container[batch], (*v).components.container[batch]));
+	return std::move(result);
+}
+//
+// HACK ALERT : Only valid on 3 dimension (test only)
+//
+template<typename scalar_t, size_t space_mask>
+auto wedge_product(const vector_t<scalar_t, space_mask>& u, const vector_t<scalar_t, space_mask>& v)
+{
+	using multivec_t = multivector_t<scalar_t, space_mask, 1>;
+	multivec_t result(multivec_t::UNINITIALIZED);
+	result.components.container[0] = DirectX::XMVector3Cross(u.components.container[0], v.components.container[0]);
+	return std::move(*result);
+}
+template<typename scalar_t, size_t space_mask1, size_t space_mask2, size_t rank_size1, size_t rank_size2>
+auto operator ^(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+{
+	return std::move(wedge_product(u, v));
+}
+
+
+//
+// Hodge dual
+//
+template<size_t subspace_mask, size_t loop>
+struct hodge_conjugate_helper
+{
+private:
+	using scalar_t = float;
+	template<typename scalar_t>
+	struct assign
+	{
+		template<int sign> static constexpr void conjugate(scalar_t, const scalar_t&) {}; // result is 0 so nothing to do
+	};
+	template<typename scalar_t>
+	struct assign<scalar_t&>
+	{
+		template<int sign> static constexpr void conjugate(scalar_t& result, const scalar_t& u); // should not be called
+		template<>         static constexpr void conjugate<+1>(scalar_t& result, const scalar_t& u) { result = +u; }
+		template<>         static constexpr void conjugate<-1>(scalar_t& result, const scalar_t& u) { result = -u; }
+	};
+
+public:
+	template<typename scalar_t, size_t space_mask0, size_t space_mask1, size_t rank_size0, size_t rank_size1>
+	hodge_conjugate_helper(multivector_t<scalar_t, space_mask0, rank_size0>& result, const multivector_t<scalar_t, space_mask1, rank_size1>& u)
+	{
+		using traits = hodge_conjugacy_traits<subspace_mask, space_mask0>;
+		using ref_type = decltype(result.get<traits::bit_set>());
+		static_assert((subspace_mask & space_mask0) == subspace_mask, "Cannot calculate Hodge dual over non-embedding space. Please project onto target space first.");
+		static_assert((subspace_mask ^ traits::bit_set) == space_mask0, "Incorrect dual space.");
+		assign<ref_type>::conjugate<traits::sign>(result.get<traits::bit_set>(), u.get<subspace_mask>());
+	}
+};
+//
+// Generic version
+//
+//template<typename scalar_t, size_t space_mask, size_t rank_size>
+//auto hodge_conjugate(const multivector_t<scalar_t, space_mask, rank_size>& u)
+//{
+//	multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size - rank_size> result;
+//	for_each_combination< select_combinations<space_mask, rank_size> >::iterate<hodge_conjugate_helper>(result, u);
+//	return std::move(result);
+//}
+
+//
+// HACK ALERT : temporary test code for optimization check. This won't work at all in generic cases (it works in dim 3)
+// Once optimized, double hodge on dot product cause about 44% performance loss (13 instructions instead of 9), which is bad.
+// This needs to be fixed.
+//
+template<typename scalar_t, size_t space_mask, size_t rank_size>
+auto hodge_conjugate(const multivector_t<scalar_t, space_mask, rank_size>& u)
+{
+	using multivec_t = multivector_t<scalar_t, space_mask, bit_traits<space_mask>::population_count - rank_size>;
+	static const DirectX::XMVECTOR sign{ 1.0f, -1.0f, 1.0f, 1.0f };
+	multivec_t result(multivec_t::UNINITIALIZED);
+	result.components.container[0] = DirectX::XMVectorMultiply(u.components.container[0], sign);
+	return std::move(result);
+}
+template<typename scalar_t, size_t space_mask, size_t rank_size>
+auto operator *(const multivector_t<scalar_t, space_mask, rank_size>& u)
+{
+	return std::move(hodge_conjugate(u));
+}
+
+
+template<typename scalar_t, size_t space_mask1, size_t space_mask2, size_t rank_size1, size_t rank_size2>
+auto CrossProduct(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+{
+	return std::move( *(u ^ v) );
+}
+template<typename scalar_t, size_t space_mask1, size_t space_mask2, size_t rank_size1, size_t rank_size2>
+auto InnerProduct(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+{
+	return std::move( *(u ^ *v) );
+}
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -91,68 +190,130 @@ template<typename type_t>
 struct latex_t;
 template<typename type_t>
 struct raw_t;
+template<typename type_t>
+struct algebraic_t;
 
-template<typename field_t, size_t dimension>
-struct latex_t<vector_t<field_t, dimension>>
+template<typename field_t, size_t mask, size_t rank>
+struct latex_t<multivector_t<field_t, mask, rank>>
 {
-	static constexpr std::string prefix() { return "\\left("; }
-	static constexpr std::string delimiter() { return ",\\,"; }
-	static constexpr std::string postfix() { return "\\right)"; }
+	static constexpr const char* prefix() { return "\\left("; }
+	static constexpr const char* delimiter() { return ",\\,"; }
+	static constexpr const char* postfix() { return "\\right)"; }
 };
-template<typename field_t, size_t dimension>
-struct raw_t<vector_t<field_t, dimension>>
+template<typename field_t, size_t mask, size_t rank>
+struct raw_t<multivector_t<field_t, mask, rank>>
 {
-	static constexpr std::string prefix() { return "{"; }
-	static constexpr std::string delimiter() { return ", "; }
-	static constexpr std::string postfix() { return "}"; }
+	static constexpr const char* prefix() { return "{"; }
+	static constexpr const char* delimiter() { return ", "; }
+	static constexpr const char* postfix() { return "}"; }
+};
+template<typename field_t, size_t mask, size_t rank>
+struct algebraic_t<multivector_t<field_t, mask, rank>>
+{
+	static constexpr const char* prefix() { return "("; }
+	static constexpr const char* delimiter() { return " + "; }
+	static constexpr const char* postfix() { return ")"; }
 };
 
 #if USING_STATIC_FOR_EACH_OUTPUT
 template<template<typename> class output_traits>
-struct output_vector_component
+struct output_multivector_components
 {
+private:
+	template<typename out_traits_t>
+	struct outer_basis_traits
+	{
+		static constexpr const char* symbol() { return "e"; }
+		static constexpr const char* accessor_prefix()  { return ""; }
+		static constexpr const char* accessor_postfix() { return ""; }
+		static constexpr const char* delimiter() { return "^"; }
+	};
+public:
 	template<size_t bit_mask, size_t loop>
 	struct do_action
 	{
-		template<typename field_type, size_t space_mask>
-		do_action(std::ostream& out, const vector_t<field_type, space_mask>& vec)
+	private:
+		template<class outer_basis_traits>
+		struct output_basis
 		{
-			using type_t = vector_t<field_type, space_mask>;
+			template<size_t bit_index, size_t loop>
+			struct do_action
+			{
+				do_action(std::ostream& out)
+				{
+					enum { first_bit = bit_traits<bit_mask>::get_bit<0>(), };
+					const std::string delimiter = (loop == first_bit) ? "" : outer_basis_traits::delimiter();
+					out << delimiter << outer_basis_traits::symbol() << outer_basis_traits::accessor_prefix() << bit_index << outer_basis_traits::accessor_postfix();
+				}
+			};
+		};
+
+	public:
+		template<typename scalar_t, size_t space_mask, size_t rank_size>
+		do_action(std::ostream& out, const multivector_t<scalar_t, space_mask, rank_size>& V)
+		{
+			using type_t = multivector_t<scalar_t, space_mask, rank_size>;
 			using output_traits_t = output_traits<type_t>;
 			const std::string delimiter = (loop == 0) ? "" : output_traits_t::delimiter();
-			out << delimiter << "e" << bit_traits<space_mask>::get_mask_index<bit_mask>() << " = " << vec.get<bit_mask>();
+			const std::string prefix    = (bit_traits<bit_mask>::population_count <= 1) ? " " : output_traits_t::prefix();
+			const std::string postfix   = (bit_traits<bit_mask>::population_count <= 1) ? "" : output_traits_t::postfix();
+			out << delimiter << V.get<bit_mask>() << prefix;
+			for_each_bit_index<bit_mask>::iterate<output_basis<outer_basis_traits<output_traits_t>>::do_action>(out);
+			out << postfix;
+		}
+
+		template<typename scalar_t, size_t space_mask>
+		do_action(std::ostream& out, const multivector_t<scalar_t, space_mask, 0>& V)
+		{
+			out << V.get<bit_mask>();
 		}
 	};
 };
 #endif // #if USING_STATIC_FOR_EACH_OUTPUT
 
-template<template<typename> class output_traits, typename field_type, size_t space_mask>
-std::string to_string(const vector_t<field_type, space_mask>& vec)
+template<template<typename> class output_traits, typename field_type, size_t space_mask, size_t rank_size>
+std::string to_string(const multivector_t<field_type, space_mask, rank_size>& V)
 {
-	using type_t = vector_t<field_type, space_mask>;
-	using space_traits_t = bit_traits<space_mask>;
+	using type_t = multivector_t<field_type, space_mask, rank_size>;
 	using output_traits_t = output_traits<type_t>;
 
 	std::stringstream ss;
 	ss << output_traits_t::prefix();
 
 #if USING_STATIC_FOR_EACH_OUTPUT
-	for_each_bit<space_traits_t>::iterate<output_vector_component<output_traits>::do_action>(ss, vec);
+	for_each_combination<select_combinations<space_mask, rank_size>>::iterate<output_multivector_components<output_traits>::do_action>(ss, V);
 #else // #if USING_STATIC_FOR_EACH_OUTPUT
 	std::string delimiter;
-	for (size_t index = 0; index < vec.dimension_size; ++index)
+	for (size_t index = 0; index < V.dimension_size; ++index)
 	{
-		ss << delimiter << vec.components[index];
+		ss << delimiter << V.components[index];
 		delimiter = output_traits_t::delimiter();
 	}
 #endif // #if USING_STATIC_FOR_EACH_OUTPUT
 
 	ss << output_traits_t::postfix();
-
 	return std::move( ss.str() );
 }
 
+#if USING_STATIC_FOR_EACH_OUTPUT
+template<typename type_t> using out_t = algebraic_t<type_t>;
+#else // #if USING_STATIC_FOR_EACH_OUTPUT
 template<typename type_t> using out_t = raw_t<type_t>;
+#endif // #if USING_STATIC_FOR_EACH_OUTPUT
+
+template<typename field_type, size_t space_mask, size_t rank_size>
+std::ostream& operator <<(std::ostream& out, const multivector_t<field_type, space_mask, rank_size>& V)
+{
+	return out << to_string<out_t>(V);
+}
+
+template<typename field_type, size_t space_mask, size_t rank_size>
+std::istream& operator >>(std::istream& in, multivector_t<field_type, space_mask, rank_size>& V)
+{
+	for (size_t index = 0; index < V.dimension_size; ++index)
+		in >> V.components[index];
+	return in;
+}
 
 //////////////////////////
 
@@ -372,27 +533,85 @@ class test_multivector : public RegisteredFunctor
 	test_multivector() : RegisteredFunctor(fct) {}
 	static void fct()
 	{
-		multivector_type1 test1{ cos(0.4f), -sin(0.4f), 0.0f };
-		multivector_type1 test2{ sin(0.4f),  cos(0.4f), 0.0f };
-		multivector_type1 test3{    0.0f,      0.0f,    1.0f};
+		multivector_type1 test1{ cos(0.4f), -sin(0.4f), 0.0f, 0.0f };
+		multivector_type1 test2{ sin(0.4f),  cos(0.4f), 0.0f, 0.0f };
+		multivector_type1 test3{    0.0f,      0.0f,    1.0f, 0.0f};
 
-		std::cin >> test1.get<e0>();
-		std::cin >> test1.get<e1>();
-		std::cin >> test1.get<e2>();
-		std::cin >> test2.get<e0>();
-		std::cin >> test2.get<e1>();
-		std::cin >> test2.get<e2>();
-		std::cin >> test3.get<e0>();
-		std::cin >> test3.get<e1>();
-		std::cin >> test3.get<e2>();
+		const std::string input_filename = "../../tmp/test_multivector.in";
+		const bool onlytest = (std::cin.gcount() == 0);
+		if (onlytest)
+		{
+			std::cout << "Press 'd' to delete file, press anything else to continue..." << std::endl;
+		}
+		int data = std::cin.get();
+		if (data == 'd')
+			std::remove(input_filename.c_str());
+		else if (!onlytest)
+			std::cin.unget();
 
-		multivector_type2 test4 = (test1 ^ test2);
-		std::cout << test4.get<e1^e2>();
-		std::cout << "," << test4.get<e0^e2>();
-		std::cout << "," << test4.get<e0^e1>() << std::endl;
+		{
+			auto file = std::fstream(input_filename, std::ios_base::in | std::ios_base::_Nocreate);
 
-		multivector_type3 test5 = ((test1 ^ test2) ^ test3);
-		std::cout << test5.get<e0^e1^e2>() << std::endl;
+			static const std::string version_string = "version";
+			static const size_t version = 0;
+			if (file.is_open())
+			{
+				std::string file_version_string;
+				size_t file_version;
+				file >> file_version_string >> file_version;
+				if (file_version_string != version_string || file_version != version)
+					file.close();
+			}
+			else
+			{
+				std::cout << "Please enter 9 numbers : ";
+			}
+
+			std::istream& in = file.is_open() ? file : std::cin;
+
+			in >> test1;
+			in >> test2;
+			in >> test3;
+
+			if (!file.is_open())
+			{
+				file.open(input_filename, std::ios_base::out);
+				if (file.is_open())
+				{
+					file << version_string << " " << version << std::endl;
+					file << " " << test1.cget<e0>();
+					file << " " << test1.cget<e1>();
+					file << " " << test1.cget<e2>();
+					file << " " << test2.cget<e0>();
+					file << " " << test2.cget<e1>();
+					file << " " << test2.cget<e2>();
+					file << " " << test3.cget<e0>();
+					file << " " << test3.cget<e1>();
+					file << " " << test3.cget<e2>();
+				}
+			}
+		}
+
+		//DirectX::XMVECTOR test1v{ test1.components[0], test1.components[1], test1.components[2] };
+		//DirectX::XMVECTOR test2v{ test2.components[0], test2.components[1], test2.components[2] };
+		DirectX::XMVECTOR test1v{ test1.components.container[0] };
+		DirectX::XMVECTOR test2v{ test2.components.container[0] };
+
+		auto test4 = (test1 ^ test2);
+		std::cout << test1 << " ^ " << test2 << " = " << test4 << std::endl;
+
+		auto test5 = CrossProduct(test1, test2);
+		std::cout << test1 << " x " << test2 << " = " << test5 << std::endl;
+
+		auto test6 = InnerProduct(test1, test2);
+		std::cout << test1 << " . " << test2 << " = " << test6 << std::endl;
+
+		DirectX::XMVECTORF32 test6v;
+		test6v.v = DirectX::XMVector3Dot(test1v, test2v);
+		std::cout << test1 << " . " << test2 << " = " << test6v.f[0] << std::endl;
+
+		auto test7 = (test1 ^ test2 ^ test3);
+		std::cout << "Det{" << test1 << test2 << test3 << "} = " << *test7 << std::endl;
 	}
 
 	static test_multivector instance;
@@ -428,18 +647,23 @@ class test_vector : public RegisteredFunctor
 	{
 		vector_type1 test1{ -1.0f,-1.0f,-1.0f,-1.0f }; // sets all 4 components
 		vector_type1 test2;
-		vector_type2 test3{ -1.0f,-1.0f }; // only sets components for e0 and e2, all other being 0.
+		vector_type2 test3{ -1.0f,-1.0f,0.0f,0.0f, 1.0f }; // only sets components for e0 and e2, all other being 0.
 		vector_type2 test4;
 		vector_type3 test5{ -1.0f,-1.0f }; // only sets components for e0 and e1, all other being 0.
 		vector_type3 test6 = test1;
 		vector_type1 test7 = test5.project<vector_type1>(); // only e0 component is set to a non-zero value as e1 is not is vector_type1
 		vector_type1::scalar_type coeff1, coeff2;
 
-		const std::string input_filename = "../../tmp/test_input.in";
+		const std::string input_filename = "../../tmp/test_vector.in";
+		const bool onlytest = (std::cin.gcount() == 0);
+		if (onlytest)
+		{
+			std::cout << "Press 'd' to delete file, press anything else to continue..." << std::endl;
+		}
 		int data = std::cin.get();
 		if (data == 'd')
 			std::remove(input_filename.c_str());
-		else
+		else if (!onlytest)
 			std::cin.unget();
 
 		{
@@ -519,11 +743,6 @@ class test_vector : public RegisteredFunctor
 
 		vector_type3::scalar_type coeff1d = coeff1, coeff2d = coeff2;
 		auto test_result1 = coeff1 * test1 * coeff2 + test2;
-		auto test_result2 = coeff1 * test3 * coeff2 + test4;
-		auto test_result3 = coeff1d * test5 * coeff2d + test6;
-		//auto test_result4 = coeff1 * test1 * coeff2 + test4; // this will fail compilation (vector types are incompatible) ... eventually this should be fixed as it all fits into destination
-		auto test_result4 = test_result1 + test_result1;
-
 		// checking both const and non-const accessors
 		std::cout << "("
 			<< test_result1.cget<e0>() << ", "
@@ -538,17 +757,21 @@ class test_vector : public RegisteredFunctor
 			<< test_result1.get<e3>()
 			<< std::endl;
 
-		std::cout << "test_result1: " << to_string<out_t>(test_result1) << std::endl;
-		std::cout << "test_result2: " << to_string<out_t>(test_result2) << std::endl;
-		std::cout << "test_result3: " << to_string<out_t>(test_result3) << std::endl;
-		std::cout << "test_result4: " << to_string<out_t>(test_result4) << std::endl;
+		std::cout << "test_result1: " << test_result1 << std::endl;
+		auto test_result2 = coeff1 * test3 * coeff2 + test4;
+		std::cout << "test_result2: " << test_result2 << std::endl;
+		auto test_result3 = coeff1d * test5 * coeff2d + test6;
+		std::cout << "test_result3: " << test_result3 << std::endl;
+		//auto test_result4 = coeff1 * test1 * coeff2 + test4; // this will fail compilation (vector types are incompatible) ... eventually this should be fixed as it all fits into destination
+		auto test_result4 = test_result1 + test_result1;
+		std::cout << "test_result4: " << test_result4 << std::endl;
 		test_result4 = test_result1;
 		test_result4 += test_result4;
 		test_result4 *= coeff1;
 		test_result4 /= coeff2;
-		std::cout << "test_result1 (copied on 4): " << to_string<out_t>(test_result1) << std::endl;
-		std::cout << "test_result4 (modified 1): " << to_string<out_t>(test_result4) << std::endl;
-		std::cout << to_string<out_t>(test7) << std::endl;
+		std::cout << "test_result1 (copied on 4): " << test_result1 << std::endl;
+		std::cout << "test_result4 (modified 1): " << test_result4 << std::endl;
+		std::cout << test7 << std::endl;
 
 		std::cout << "... run test '" << instance.id << "d' to delete input file..." << std::endl;
 	}

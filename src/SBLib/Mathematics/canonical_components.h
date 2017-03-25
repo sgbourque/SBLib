@@ -12,10 +12,12 @@ public:
 	enum
 	{
 		dimension_size = dimension,
+		parallel_size  = 1,
+		parallel_count = (dimension_size + (parallel_size - 1)) / parallel_size,
 	};
 	using scalar_type       = scalar_t;
 	using container_type    = std::array<scalar_type, dimension_size>;
-	using intermediate_type = scalar_type[dimension_size];
+	using raw_type          = scalar_type[dimension_size];
 
 	scalar_type& operator[](const size_t index) { return static_cast<this_type*>(this)->container[index]; }
 	const scalar_type& operator[](const size_t index) const { return static_cast<const this_type*>(this)->container[index]; }
@@ -25,43 +27,24 @@ private:
 };
 
 //
-// Generic "infinite" dimension (TODO)
-//
-#include <vector>
-template<template<typename, size_t> class canonical_components_type, typename scalar_t>
-struct canonical_components_helper<canonical_components_type, scalar_t, 0>
-{
-	static_assert(sizeof(scalar_t*) < 0, "Unimplemented.");
-/*
-public:
-	using scalar_type = scalar_t;
-	using container_type = std::vector<scalar_type>;
-	using intermediate_type = scalar_type*;
-
-	scalar_type& operator[](const size_t index) { return static_cast<this_type*>(this)->container[index]; }
-	const scalar_type& operator[](const size_t index) const { return static_cast<const this_type*>(this)->container[index]; }
-
-private:
-	using this_type = canonical_components_type<scalar_t, 0>;
-*/
-};
-
-//
 // Generic canonical components
 //
 template<typename scalar_t, size_t dimension>
 struct canonical_components_t : canonical_components_helper<canonical_components_t, scalar_t, dimension>
 {
+	enum eUNINITIALIZED : bool { UNINITIALIZED = true, };
+	canonical_components_t(eUNINITIALIZED) {};
+
 	canonical_components_t() : container{} {};
 	canonical_components_t(canonical_components_t&& v): container(std::move(v.container)) {};
 	canonical_components_t(const canonical_components_t& v) : container(v.container) {};
 
 	explicit canonical_components_t(const container_type& v) : container(v) {};
-	explicit canonical_components_t(const intermediate_type& v) { container.v = v; };
+	explicit canonical_components_t(const raw_type& v) { container.v = v; };
 	template<typename... scalars> explicit canonical_components_t(scalar_type&& first, scalars&&... coords) : container{ first, std::forward<scalars>(coords)... } { static_assert(sizeof...(scalars) < dimension_size, "Too many initializers."); }
 
 	canonical_components_t(container_type&& v) : container(v) {}
-	canonical_components_t(intermediate_type&& v) { container.v = std::move(v); }
+	canonical_components_t(raw_type&& v) { container.v = std::move(v); }
 
 	const canonical_components_t& operator =(canonical_components_t&& v) { container = std::move(v.container); return *this; };
 	const canonical_components_t& operator =(const canonical_components_t& v) { container = v.container; return *this; };
@@ -71,67 +54,94 @@ struct canonical_components_t : canonical_components_helper<canonical_components
 
 	container_type container;
 };
+//template<typename scalar_t, size_t dimension>
+//inline auto begin(canonical_components_t<scalar_t, dimension>& u)
+//{
+//	return u.container.begin();
+//}
+//template<typename scalar_t, size_t dimension>
+//inline auto begin(const canonical_components_t<scalar_t, dimension>& u)
+//{
+//	return u.container.begin();
+//}
+//template<typename scalar_t, size_t dimension>
+//inline auto end(const canonical_components_t<scalar_t, dimension>& u)
+//{
+//	return u.container.end();
+//}
 
-template<typename scalar_t, size_t dimension>
-auto begin(canonical_components_t<scalar_t, dimension>& u)
+template<size_t index, size_t loop>
+struct multiply_component_helper
 {
-	return u.container.begin();
-}
-template<typename scalar_t, size_t dimension>
-auto begin(const canonical_components_t<scalar_t, dimension>& u)
+	template<typename scalar_t, size_t dimension>
+	multiply_component_helper(canonical_components_t<scalar_t, dimension>& result, const canonical_components_t<scalar_t, dimension>& u, const scalar_t& scale)
+	{
+		using namespace DirectX;
+		result.container[index] = u.container[index] * scale;
+	}
+};
+template<size_t index, size_t loop>
+struct add_component_helper
 {
-	return u.container.begin();
-}
+	template<typename scalar_t, size_t dimension>
+	add_component_helper(canonical_components_t<scalar_t, dimension>& result, const canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
+	{
+		using namespace DirectX;
+		result.container[index] = u.container[index] + v.container[index];
+	}
+};
 template<typename scalar_t, size_t dimension>
-auto end(const canonical_components_t<scalar_t, dimension>& u)
+inline auto& operator *=(canonical_components_t<scalar_t, dimension>& u, const scalar_t& scale)
 {
-	return u.container.end();
-}
-template<typename scalar_t, size_t dimension>
-const auto& operator *=(canonical_components_t<scalar_t, dimension>& u, const scalar_t& scale)
-{
-	std::transform(begin(v), end(v), begin(u), [&scale](const auto& u) -> auto { return u * scale; });
+	using compoments_t = canonical_components_t<scalar_t, dimension>;
+	static_for_each<0, compoments_t::parallel_count>::iterate<multiply_component_helper>(u, u, scale);
 	return u;
 }
 template<typename scalar_t, size_t dimension>
-auto operator *(const canonical_components_t<scalar_t, dimension>& v, const scalar_t& scale)
+inline auto operator *(const canonical_components_t<scalar_t, dimension>& u, const scalar_t& scale)
 {
-	canonical_components_t<scalar_t, dimension> value;
-	std::transform(begin(v), end(v), begin(value), [&scale](const auto& u) -> auto { return u * scale; });
-	return std::move(value);
+	using compoments_t = canonical_components_t<scalar_t, dimension>;
+	compoments_t result(compoments_t::UNINITIALIZED);
+	static_for_each<0, compoments_t::parallel_count>::iterate<multiply_component_helper>(result, u, scale);
+	return std::move(result);
 }
 template<typename scalar_t, size_t dimension>
-auto operator *(const scalar_t& scale, const canonical_components_t<scalar_t, dimension>& u)
+inline auto operator *(const scalar_t& scale, const canonical_components_t<scalar_t, dimension>& u)
 {
 	return std::move(u * scale);
 }
 template<typename scalar_t, size_t dimension>
-const auto& operator /=(canonical_components_t<scalar_t, dimension>& u, const scalar_t& scale)
+inline const auto& operator /=(canonical_components_t<scalar_t, dimension>& u, const scalar_t& scale)
 {
 	const scalar_t inverse_scale = scalar_t(1) / scale;
-	std::transform(begin(v), end(v), begin(u), [&inverse_scale](const auto& u) -> auto { return u * inverse_scale; });
+	using compoments_t = canonical_components_t<scalar_t, dimension>;
+	static_for_each<0, compoments_t::parallel_count>::iterate<multiply_component_helper>(u, u, inverse_scale);
 	return u;
 }
 template<typename scalar_t, size_t dimension>
-auto operator /(const canonical_components_t<scalar_t, dimension>& v, const scalar_t& scale)
+inline auto operator /(const canonical_components_t<scalar_t, dimension>& v, const scalar_t& scale)
 {
 	const scalar_t inverse_scale = scalar_t(1) / scale;
-	canonical_components_t<scalar_t, dimension> value;
-	std::transform(begin(v), end(v), begin(value), [&inverse_scale](const auto& u) -> auto { return u * scale; });
-	return std::move(value);
+	using compoments_t = canonical_components_t<scalar_t, dimension>;
+	compoments_t result(compoments_t::UNINITIALIZED);
+	static_for_each<0, compoments_t::parallel_count>::iterate<multiply_component_helper>(result, u, inverse_scale);
+	return std::move(result);
 }
+
 template<typename scalar_t, size_t dimension>
-auto operator +(const canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
+inline const auto& operator +=(canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
 {
-	canonical_components_t<scalar_t, dimension> value;
-	std::transform(begin(u), end(u), begin(v), begin(value), [](const auto& a, const auto& b) -> auto { return a + b; });
-	return std::move(value);
-}
-template<typename scalar_t, size_t dimension>
-const auto& operator +=(canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
-{
-	std::transform(begin(u), end(u), begin(v), begin(u), [](const auto& a, const auto& b) -> auto { return a + b; });
+	using compoments_t = canonical_components_t<scalar_t, dimension>;
+	static_for_each<0, compoments_t::parallel_count>::iterate<add_component_helper>(u, u, v);
 	return u;
+}
+template<typename scalar_t, size_t dimension>
+inline auto operator +(const canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
+{
+	using compoments_t = canonical_components_t<scalar_t, dimension>;
+	compoments_t result(compoments_t::UNINITIALIZED);
+	static_for_each<0, compoments_t::parallel_count>::iterate<add_component_helper>(result, u, v);
+	return std::move(result);
 }
 
 #if defined( DIRECTX_VECTOR )
@@ -146,10 +156,13 @@ public:
 	enum
 	{
 		dimension_size = 4,
+		parallel_size  = 4,
+		parallel_count = (dimension_size + (parallel_size - 1)) / parallel_size,
 	};
 	using scalar_type       = float;
-	using container_type = DirectX::XMVECTORF32;
-	using intermediate_type = DirectX::XMVECTOR;
+	using parallel_type     = DirectX::XMVECTOR;
+	using container_type    = DirectX::XMVECTORF32;
+	using raw_type          = DirectX::XMVECTOR;
 
 	scalar_type& operator[](const size_t index) { return static_cast<this_type*>(this)->container.f[index]; }
 	const scalar_type& operator[](const size_t index) const { return static_cast<const this_type*>(this)->container.f[index]; }
@@ -157,47 +170,49 @@ public:
 private:
 	using this_type = canonical_components_type<scalar_type, dimension_size>;
 };
+//inline auto begin(canonical_components_t<float, 4>& u)
+//{
+//	return &u.container;
+//}
+//inline auto begin(const canonical_components_t<float, 4>& u)
+//{
+//	return &u.container;
+//}
+//inline auto end(const canonical_components_t<float, 4>& u)
+//{
+//	return &u.container + 1;
+//}
 
-auto begin(canonical_components_t<float, 4>& u)
-{
-	return &u.container.f[0];
-}
-auto begin(const canonical_components_t<float, 4>& u)
-{
-	return &u.container.f[0];
-}
-auto end(const canonical_components_t<float, 4>& u)
-{
-	return &u.container.f[u.dimension_size];
-}
-const auto& operator *=(canonical_components_t<float, 4>& u, const float scale)
+inline const auto& operator *=(canonical_components_t<float, 4>& u, const float scale)
 {
 	using namespace DirectX;
 	return u.container.v *= scale;
 }
-auto operator *(const canonical_components_t<float, 4> u, const float scale)
+inline auto operator *(const canonical_components_t<float, 4> u, const float scale)
 {
 	return std::move(u.container * scale);
 }
-auto operator *(const float scale, const canonical_components_t<float, 4> v)
+inline auto operator *(const float scale, const canonical_components_t<float, 4> v)
 {
 	return std::move(v * scale);
 }
-const auto& operator /=(canonical_components_t<float, 4>& u, const float scale)
+inline const auto& operator /=(canonical_components_t<float, 4>& u, const float scale)
 {
 	using namespace DirectX;
-	return u.container.v /= scale;
+	u.container.v /= scale;
+	return u;
 }
-auto operator /(const canonical_components_t<float, 4> u, const float scale)
+inline auto operator /(const canonical_components_t<float, 4> u, const float scale)
 {
 	return std::move(u.container / scale);
 }
-const auto& operator +=(canonical_components_t<float, 4>& u, const canonical_components_t<float, 4> v)
+inline const auto& operator +=(canonical_components_t<float, 4>& u, const canonical_components_t<float, 4> v)
 {
 	using namespace DirectX;
-	return u.container.v += v.container.v;
+	u.container.v += v.container.v;
+	return u;
 }
-auto operator +(const canonical_components_t<float, 4> u, const canonical_components_t<float, 4> v)
+inline auto operator +(const canonical_components_t<float, 4> u, const canonical_components_t<float, 4> v)
 {
 	return std::move(u.container + v.container);
 }
@@ -212,51 +227,82 @@ public:
 	enum
 	{
 		dimension_size = dimension,
-		parallel_dimension_size  = 4,
-		parallel_dimension_count = (dimension + 3) / parallel_dimension_size,
+		parallel_size  = 4,
+		parallel_count = (dimension_size + (parallel_size - 1)) / parallel_size,
 	};
-	using scalar_type = float;
-	using parallel_type = canonical_components_type<float, 4>;
-	using container_type = std::array<parallel_type, parallel_dimension_count>;
-	using intermediate_type = parallel_type[parallel_dimension_count];
+	using scalar_type       = float;
+	using parallel_type     = typename canonical_components_type<float, 4>::parallel_type;
+	using container_type    = std::array<parallel_type, parallel_count>;
+	using raw_type          = parallel_type[parallel_count];
 
-	scalar_type& operator[](const size_t index) { return static_cast<this_type*>(this)->container[index / parallel_dimension_size][index % parallel_dimension_size]; }
-	const scalar_type& operator[](const size_t index) const { return static_cast<const this_type*>(this)->container[index / parallel_dimension_size][index % parallel_dimension_size]; }
+	scalar_type& operator[](const size_t index)
+	{
+		acessor_type& container = reinterpret_cast<acessor_type&>(static_cast<this_type*>(this)->container[index / parallel_size]);
+		return container.f[index % parallel_size];
+	}
+	const scalar_type& operator[](const size_t index) const
+	{
+		const acessor_type& container = reinterpret_cast<const acessor_type&>(static_cast<const this_type*>(this)->container[index / parallel_size]);
+		return container.f[index % parallel_size];
+	}
 
 private:
-	using this_type = canonical_components_type<scalar_type, dimension_size>;
+	using this_type    = canonical_components_type<scalar_type, dimension_size>;
+	using acessor_type = typename canonical_components_type<float, 4>::container_type;
 };
 template<size_t dimension>
 struct canonical_components_t<float, dimension> : canonical_components_helper<canonical_components_t, float, dimension>
 {
 private:
-	template<typename... scalars>
-	void unpack(scalar_type* dest, scalar_type&& first, scalars&&... coords)
+	using parallel_type = typename canonical_components_helper<::canonical_components_t, float, dimension>::parallel_type;
+	template<size_t count, size_t index>
+	struct unpack
 	{
-		*dest = first;
-		unpack(++dest, std::forward<scalars>(coords)...);
-	}
-	template<>
-	void unpack(scalar_type* dest, scalar_type&& last)
+		template<typename... scalars>
+		static void assign(container_type& dest, scalar_type&& s1, scalar_type&& s2, scalar_type&& s3, scalar_type&& s4, scalars&&... coords)
+		{
+			static_assert(parallel_size == 4, "Too many initializers.");
+			static_assert(count <= (parallel_size * parallel_count), "Too many initializers.");
+			parallel_type result = parallel_type{ s1, s2, s3, s4 };
+			dest[index] = std::move(result);
+			unpack<(count > parallel_size) ? count - parallel_size : 0, index + 1>::assign(dest, std::forward<scalars>(coords)...);
+		}
+		template<typename... scalars>
+		static void assign(container_type& dest, scalars&&... coords)
+		{
+			static_assert(count <= (parallel_size * parallel_count), "Too many initializers.");
+			parallel_type result = parallel_type{std::forward<scalars>(coords)...};
+			dest[index] = std::move(result);
+			unpack<(count > parallel_size) ? count - parallel_size : 0, index + 1>::assign(dest, std::forward<scalars>(coords + parallel_size)...);
+		}
+	};
+	template<size_t index>
+	struct unpack<0, index>
 	{
-		*dest = last;
-	}
+		template<typename... scalars>
+		static void assign(container_type&, scalars&&... )
+		{
+		}
+	};
 
 public:
+	enum eUNINITIALIZED : bool { UNINITIALIZED = true, };
+	canonical_components_t(eUNINITIALIZED) {};
+
 	canonical_components_t() : container{} {};
 	canonical_components_t(canonical_components_t&& v) : container(std::move(v.container)) {};
 	canonical_components_t(const canonical_components_t& v) : container(v.container) {};
 
 	explicit canonical_components_t(const container_type& v) : container(v) {};
-	explicit canonical_components_t(const intermediate_type& v) { container.v = v; };
+	explicit canonical_components_t(const raw_type& v) { container.v = v; };
 	template<typename... scalars> explicit canonical_components_t(scalar_type&& first, scalars&&... coords) : container()
 	{
-		static_assert( sizeof...(scalars) < dimension_size, "Too many initializers." );
-		unpack(&(*this)[0], std::move(first), std::forward<scalars>(coords)...);
+		static_assert( sizeof...(scalars) < (parallel_size * parallel_count), "Too many initializers." );
+		unpack<sizeof...(coords) + 1, 0>::assign(container, std::move(first), std::forward<scalars>(coords)...);
 	}
 
 	canonical_components_t(container_type&& v) : container(v) {}
-	canonical_components_t(intermediate_type&& v) { container.v = std::move(v); }
+	canonical_components_t(raw_type&& v) { container.v = std::move(v); }
 
 	const canonical_components_t& operator =(canonical_components_t&& v) { container = std::move(v.container); return *this; };
 	const canonical_components_t& operator =(const canonical_components_t& v) { container = v.container; return *this; };
