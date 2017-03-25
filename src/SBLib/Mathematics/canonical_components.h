@@ -1,5 +1,5 @@
 #pragma once
-#define DIRECTX_VECTOR
+#define USE_DIRECTX_VECTOR 0
 
 //
 // Generic fixed dimension
@@ -76,7 +76,9 @@ struct multiply_component_helper
 	template<typename scalar_t, size_t dimension>
 	multiply_component_helper(canonical_components_t<scalar_t, dimension>& result, const canonical_components_t<scalar_t, dimension>& u, const scalar_t& scale)
 	{
+#if USE_DIRECTX_VECTOR
 		using namespace DirectX;
+#endif // #if USE_DIRECTX_VECTOR
 		result.container[index] = u.container[index] * scale;
 	}
 };
@@ -86,7 +88,9 @@ struct add_component_helper
 	template<typename scalar_t, size_t dimension>
 	add_component_helper(canonical_components_t<scalar_t, dimension>& result, const canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
 	{
+#if USE_DIRECTX_VECTOR
 		using namespace DirectX;
+#endif // #if USE_DIRECTX_VECTOR
 		result.container[index] = u.container[index] + v.container[index];
 	}
 };
@@ -144,7 +148,7 @@ inline auto operator +(const canonical_components_t<scalar_t, dimension>& u, con
 	return std::move(result);
 }
 
-#if defined( DIRECTX_VECTOR )
+#if USE_DIRECTX_VECTOR
 #include <DirectXMath.h>
 //
 // Specialized 4 x float
@@ -312,4 +316,4 @@ public:
 
 	container_type container;
 };
-#endif // #if defined( DIRECTX_VECTOR )
+#endif // #if USE_DIRECTX_VECTOR

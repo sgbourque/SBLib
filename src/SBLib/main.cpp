@@ -60,15 +60,16 @@ auto wedge_product(const multivector_t<scalar_t, space_mask1, rank_size1>& u, co
 	return std::move(result);
 }
 
+#if USE_DIRECTX_VECTOR
 //
 // HACK ALERT : temporary test code for optimization check.
-// Once optimized, double hodge on dot product cause about 44% performance loss (13 instructions instead of 9), which is bad.
+// Once optimized, triple hodge on dot product cause about 44% performance loss (13 instructions instead of 9), which is bad.
 // This needs to be fixed.
 //
 // Also, hodge isn't even defined yet so using it here is ackward...
 //
-template<typename scalar_t, size_t space_mask>
-auto wedge_product(const vector_t<scalar_t, space_mask>& u, const multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size - 1>& v)
+template<size_t space_mask>
+auto wedge_product(const vector_t<float, space_mask>& u, const multivector_t<float, space_mask, vector_t<float, space_mask>::dimension_size - 1>& v)
 {
 	using multivec_t = multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size>;
 	multivec_t result(multivec_t::UNINITIALIZED);
@@ -80,14 +81,15 @@ auto wedge_product(const vector_t<scalar_t, space_mask>& u, const multivector_t<
 //
 // HACK ALERT : Only valid on 3 dimension (test only)
 //
-template<typename scalar_t, size_t space_mask>
-auto wedge_product(const vector_t<scalar_t, space_mask>& u, const vector_t<scalar_t, space_mask>& v)
+template<size_t space_mask>
+auto wedge_product(const vector_t<float, space_mask>& u, const vector_t<float, space_mask>& v)
 {
-	using multivec_t = multivector_t<scalar_t, space_mask, 1>;
+	using multivec_t = multivector_t<float, space_mask, 1>;
 	multivec_t result(multivec_t::UNINITIALIZED);
 	result.components.container[0] = DirectX::XMVector3Cross(u.components.container[0], v.components.container[0]);
 	return std::move(*result);
 }
+#endif // #if USE_DIRECTX_VECTOR
 template<typename scalar_t, size_t space_mask1, size_t space_mask2, size_t rank_size1, size_t rank_size2>
 auto operator ^(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
 {
@@ -130,28 +132,32 @@ public:
 //
 // Generic version
 //
-//template<typename scalar_t, size_t space_mask, size_t rank_size>
-//auto hodge_conjugate(const multivector_t<scalar_t, space_mask, rank_size>& u)
-//{
-//	multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size - rank_size> result;
-//	for_each_combination< select_combinations<space_mask, rank_size> >::iterate<hodge_conjugate_helper>(result, u);
-//	return std::move(result);
-//}
+template<typename scalar_t, size_t space_mask, size_t rank_size>
+auto hodge_conjugate(const multivector_t<scalar_t, space_mask, rank_size>& u)
+{
+	multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size - rank_size> result;
+	for_each_combination< select_combinations<space_mask, rank_size> >::iterate<hodge_conjugate_helper>(result, u);
+	return std::move(result);
+}
 
+#if USE_DIRECTX_VECTOR
 //
 // HACK ALERT : temporary test code for optimization check. This won't work at all in generic cases (it works in dim 3)
 // Once optimized, double hodge on dot product cause about 44% performance loss (13 instructions instead of 9), which is bad.
 // This needs to be fixed.
 //
-template<typename scalar_t, size_t space_mask, size_t rank_size>
-auto hodge_conjugate(const multivector_t<scalar_t, space_mask, rank_size>& u)
+static const __m128i maskNeg2 = DirectX::XMVECTORU32{ 0x00000000u, 0x80000000u, 0x00000000u, 0x00000000u };
+template<size_t space_mask, size_t rank_size>
+auto hodge_conjugate(const multivector_t<float, space_mask, rank_size>& u)
 {
-	using multivec_t = multivector_t<scalar_t, space_mask, bit_traits<space_mask>::population_count - rank_size>;
-	static const DirectX::XMVECTOR sign{ 1.0f, -1.0f, 1.0f, 1.0f };
+	using multivec_t = multivector_t<float, space_mask, bit_traits<space_mask>::population_count - rank_size>;
 	multivec_t result(multivec_t::UNINITIALIZED);
-	result.components.container[0] = DirectX::XMVectorMultiply(u.components.container[0], sign);
+	//static const DirectX::XMVECTOR sign{ 1.0f, -1.0f, 1.0f, 1.0f };
+	//result.components.container[0] = DirectX::XMVectorMultiply(u.components.container[0], sign);
+	result.components.container[0] = _mm_castsi128_ps(_mm_xor_si128(_mm_castps_si128(u.components.container[0]), maskNeg2));
 	return std::move(result);
 }
+#endif // USE_DIRECTX_VECTOR
 template<typename scalar_t, size_t space_mask, size_t rank_size>
 auto operator *(const multivector_t<scalar_t, space_mask, rank_size>& u)
 {
@@ -533,9 +539,9 @@ class test_multivector : public RegisteredFunctor
 	test_multivector() : RegisteredFunctor(fct) {}
 	static void fct()
 	{
-		multivector_type1 test1{ cos(0.4f), -sin(0.4f), 0.0f, 0.0f };
-		multivector_type1 test2{ sin(0.4f),  cos(0.4f), 0.0f, 0.0f };
-		multivector_type1 test3{    0.0f,      0.0f,    1.0f, 0.0f};
+		multivector_type1 test1{ cos(0.4f), -sin(0.4f), 0.0f/*, 0.0f*/ };
+		multivector_type1 test2{ sin(0.4f),  cos(0.4f), 0.0f/*, 0.0f*/ };
+		multivector_type1 test3{    0.0f,      0.0f,    1.0f/*, 0.0f*/ };
 
 		const std::string input_filename = "../../tmp/test_multivector.in";
 		const bool onlytest = (std::cin.gcount() == 0);
@@ -592,11 +598,6 @@ class test_multivector : public RegisteredFunctor
 			}
 		}
 
-		//DirectX::XMVECTOR test1v{ test1.components[0], test1.components[1], test1.components[2] };
-		//DirectX::XMVECTOR test2v{ test2.components[0], test2.components[1], test2.components[2] };
-		DirectX::XMVECTOR test1v{ test1.components.container[0] };
-		DirectX::XMVECTOR test2v{ test2.components.container[0] };
-
 		auto test4 = (test1 ^ test2);
 		std::cout << test1 << " ^ " << test2 << " = " << test4 << std::endl;
 
@@ -606,9 +607,13 @@ class test_multivector : public RegisteredFunctor
 		auto test6 = InnerProduct(test1, test2);
 		std::cout << test1 << " . " << test2 << " = " << test6 << std::endl;
 
+#if USE_DIRECTX_VECTOR
+		DirectX::XMVECTOR test1v{ test1.components.container[0] };
+		DirectX::XMVECTOR test2v{ test2.components.container[0] };
 		DirectX::XMVECTORF32 test6v;
 		test6v.v = DirectX::XMVector3Dot(test1v, test2v);
 		std::cout << test1 << " . " << test2 << " = " << test6v.f[0] << std::endl;
+#endif // #if USE_DIRECTX_VECTOR
 
 		auto test7 = (test1 ^ test2 ^ test3);
 		std::cout << "Det{" << test1 << test2 << test3 << "} = " << *test7 << std::endl;
