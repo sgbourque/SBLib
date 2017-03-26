@@ -148,7 +148,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="test_main.cpp" />
+    <ClCompile Include="test_clifford_algebra.cpp" />
+    <ClCompile Include="test_combinations.cpp" />
+    <ClCompile Include="test_multivector.cpp" />
+    <ClCompile Include="test_multivector_space.cpp" />
+    <ClCompile Include="test_vector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Algorithms\static_for_each.h" />
@@ -156,6 +161,7 @@
     <ClInclude Include="Mathematics\canonical_components.h" />
     <ClInclude Include="Mathematics\combinations.h" />
     <ClInclude Include="Mathematics\multivector.h" />
+    <ClInclude Include="test_common.h" />
     <ClInclude Include="Traits\bit_traits.h" />
     <ClInclude Include="Traits\clifford_traits.h" />
   </ItemGroup>
