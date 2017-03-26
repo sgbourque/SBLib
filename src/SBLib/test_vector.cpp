@@ -2,6 +2,8 @@
 
 #include <fstream>
 
+namespace SBLib::Test
+{
 class test_vector : public RegisteredFunctor
 {
 	enum
@@ -153,11 +155,10 @@ class test_vector : public RegisteredFunctor
 		std::cout << "test_result4 (modified 1): " << test_result4 << std::endl;
 		std::cout << test7 << std::endl;
 
-		std::cout << "... run test '" << instance.get_name() << "d' to delete input file..." << std::endl;
+		std::cout << "... run test '" << instance.get_id() << "d' to delete input file..." << std::endl;
 	}
 
 	static test_vector instance;
 };
-#if (USING_TEST_MASK & 4)  != 0
 test_vector test_vector::instance;
-#endif // #if (USING_TEST_MASK & 4) != 0
+} // namespace SBLib::Test

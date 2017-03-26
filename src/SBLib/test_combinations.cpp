@@ -1,11 +1,7 @@
 #include <test_common.h>
 
-//#include <Mathematics/binomial_coefficient.h>
-//#include <Mathematics/combinations.h>
-//#include <Mathematics/multivector.h>
-//#include <Traits/clifford_traits.h>
-//#include <Traits/bit_traits.h>
-
+namespace SBLib::Test
+{
 class test_combination : public RegisteredFunctor
 {
 	enum
@@ -167,6 +163,5 @@ class test_combination : public RegisteredFunctor
 	}
 	static test_combination instance;
 };
-#if (USING_TEST_MASK & 1) != 0
 test_combination test_combination::instance;
-#endif // #if (USING_TEST_MASK & 1) != 0
+} // namespace SBLib::Test

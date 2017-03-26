@@ -5,6 +5,8 @@
 
 #include <DirectXMath.h>
 
+namespace SBLib::Mathematics
+{
 //
 // Wedge product
 //
@@ -174,10 +176,12 @@ auto InnerProduct(const multivector_t<scalar_t, space_mask1, rank_size1>& u, con
 {
 	return std::move( *(u ^ *v) );
 }
-
+} // namespace SBLib::Mathematics
 
 //////////////////////////////////////////////////////////////////////////////
 
+namespace SBLib::Test
+{
 class test_multivector : public RegisteredFunctor
 {
 	enum
@@ -284,10 +288,11 @@ class test_multivector : public RegisteredFunctor
 
 		auto test7 = (test1 ^ test2 ^ test3);
 		std::cout << "Det{" << test1 << test2 << test3 << "} = " << *test7 << std::endl;
+
+		std::cout << "... run test '" << instance.get_id() << "d' to delete input file..." << std::endl;
 	}
 
 	static test_multivector instance;
 };
-#if (USING_TEST_MASK & 2)  != 0
 test_multivector test_multivector::instance;
-#endif // #if (USING_TEST_MASK & 2) != 0
+} // namespace SBLib::Test

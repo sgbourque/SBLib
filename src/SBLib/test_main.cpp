@@ -1,8 +1,13 @@
 #include <test_common.h>
 
+namespace SBLib::Test
+{
 RegisteredFunctor::data_t RegisteredFunctor::common_data;
+}
+
 int main()
 {
+	using namespace SBLib::Test;
 	bool quit = false, help = false;
 	size_t testCase = ~0uLL;
 	do
@@ -31,8 +36,15 @@ int main()
 			std::cout << "bye";
 		else if (help)
 			RegisteredFunctor::help(std::cout);
-		else if (!RegisteredFunctor::eval(testCase))
-			std::cout << "... test not found, please try again!" << std::endl;
+		else
+		{
+			std::string testName = RegisteredFunctor::get_name(testCase);
+			std::cout << std::setw(testName.length()) << std::setfill('-') << "" << std::endl << std::setw(0) << std::setfill(' ');
+			std::cout << testName << std::endl;
+			std::cout << std::setw(testName.length()) << std::setfill('-') << "" << std::endl << std::setw(0) << std::setfill(' ') << std::endl;
+			if (!RegisteredFunctor::eval(testCase))
+				std::cout << "... test not found, please try again!" << std::endl;
+		}
 
 		std::cout << std::endl;
 	}

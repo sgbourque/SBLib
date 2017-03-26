@@ -1,6 +1,7 @@
 #include <test_common.h>
-//#include <Traits/clifford_traits.h>
 
+namespace SBLib::Test
+{
 class test_multivector_space : public RegisteredFunctor
 {
 	//
@@ -49,23 +50,6 @@ class test_multivector_space : public RegisteredFunctor
 	using pseudoscalar_type = uniform_multimodule_t<module_type, module_type::dimension>;
 
 
-	//
-	// outermodule_t
-	//
-	/*
-	template<typename module_type>
-	struct outermodule_t
-	//	: module_t<typename module_type::field_t, (1 << module_type::dimension)>
-	{
-		outermodule_t()
-			: module_t()
-		{}
-		outermodule_t(std::array<field_t, dimension>&& coords)
-			: module_t(std::move(coords))
-		{}
-	};
-	*/
-
 	template<template<typename> class traits, typename field_type, size_t dimension_size>
 	static std::string to_string(const module_t<field_type, dimension_size>& vec)
 	{
@@ -81,19 +65,6 @@ class test_multivector_space : public RegisteredFunctor
 
 		return ss.str();
 	}
-	/*
-	template<template<typename> class traits, typename module_type, size_t rank_size>
-	static std::string to_string(const uniform_multimodule_t<module_type, rank_size>& multivec)
-	{
-		typedef uniform_multimodule_t<module_type, rank_size> uniform_multimodule_type;
-
-		enum { dimension = uniform_multimodule_type::dimension };
-		typedef typename uniform_multimodule_type::field_t    field_type;
-
-		typedef module_t<field_type, dimension>       module_type;
-		return to_string<traits>(static_cast<const module_type&>(multivec));
-	}
-	*/
 
 	test_multivector_space() : RegisteredFunctor(__FUNCTION__, fct) {}
 	static void fct()
@@ -194,6 +165,5 @@ class test_multivector_space : public RegisteredFunctor
 	}
 	static test_multivector_space instance;
 };
-#if (USING_TEST_MASK & 16) != 0
 test_multivector_space test_multivector_space::instance;
-#endif // #if (USING_TEST_MASK & 16) != 0
+} // namespace SBLib::Test

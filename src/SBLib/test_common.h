@@ -10,6 +10,8 @@
 #include <string>
 #include <unordered_map>
 
+namespace SBLib::Test
+{
 
 template<typename scalar_t, size_t space_mask, size_t rank>
 using multivector_t = SBLib::multivector_t<scalar_t, space_mask, rank>;
@@ -17,7 +19,6 @@ template<typename scalar_t, size_t space_mask>
 using vector_t = SBLib::vector_t<scalar_t, space_mask>;
 
 #define USING_STATIC_FOR_EACH_OUTPUT	1 // setting this to 1 will use very heavy static code (test)
-#define USING_TEST_MASK					~0u
 #define USING_STANDARD_BASIS        	0
 
 #if USE_DIRECTX_VECTOR
@@ -52,19 +53,30 @@ public:
 			out << id << ": " << fctName << std::endl;
 		}
 	}
+	static std::string get_name(size_t id)
+	{
+		return id < size() ? common_data.functionList[id] : "";
+	}
 protected:
 	using fct_type = void();
 	RegisteredFunctor(std::string name, fct_type fct)
 	{
-		auto class_name_end = name.find(':', 0);
-		functionName = name.substr(0, class_name_end);
-		common_data.functionMap[functionName] = fct;
-		common_data.functionList.emplace_back(functionName);
-		sort();
+		auto class_name_contructor_name_begin = name.find_last_of(':');
+		if (class_name_contructor_name_begin != std::string::npos)
+		{
+			functionName = name.substr(class_name_contructor_name_begin + 1);
+			common_data.functionMap[functionName] = fct;
+			common_data.functionList.emplace_back(functionName);
+			sort();
+		}
 	}
 	const std::string& get_name()
 	{
 		return functionName;
+	}
+	const size_t get_id()
+	{
+		return std::distance(common_data.functionList.begin(), std::find(common_data.functionList.begin(), common_data.functionList.end(), get_name()));
 	}
 
 private:
@@ -217,3 +229,4 @@ inline std::istream& operator >>(std::istream& in, multivector_t<field_type, spa
 		in >> V.components[index];
 	return in;
 }
+} // namespace SBLib::Test

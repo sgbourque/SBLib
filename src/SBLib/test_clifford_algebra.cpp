@@ -1,6 +1,8 @@
 #include <test_common.h>
 #include <Traits/clifford_traits.h>
 
+namespace SBLib::Test
+{
 class test_clifford_algebra : public RegisteredFunctor
 {
 	enum
@@ -66,6 +68,5 @@ class test_clifford_algebra : public RegisteredFunctor
 
 	static test_clifford_algebra instance;
 };
-#if (USING_TEST_MASK & 8) != 0
 test_clifford_algebra test_clifford_algebra::instance;
-#endif // #if (USING_TEST_MASK & 8) != 0
+} // namespace SBLib::Test
