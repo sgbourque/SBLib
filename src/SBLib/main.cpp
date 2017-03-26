@@ -1,13 +1,27 @@
+#define USE_DIRECTX_VECTOR 0
+
 #include <Mathematics/binomial_coefficient.h>
 #include <Mathematics/combinations.h>
 #include <Mathematics/multivector.h>
 #include <Traits/clifford_traits.h>
 #include <Traits/bit_traits.h>
 
+// For future optimizations tests...
+#include <intrin.h> // access to __m256, __m512, etc.
+
+template<typename scalar_t, size_t space_mask, size_t rank>
+using multivector_t = SBLib::multivector_t<scalar_t, space_mask, rank>;
+template<typename scalar_t, size_t space_mask>
+using vector_t = SBLib::vector_t<scalar_t, space_mask>;
+
 #define USING_STATIC_FOR_EACH_OUTPUT	1 // setting this to 1 will use very heavy static code (test)
 #define USING_TEST_MASK					~0u
 #define USING_STANDARD_BASIS        	0
 
+#include <DirectXMath.h>
+#if USE_DIRECTX_VECTOR
+#define USE_DIRECTX_VECTOR_HACK 1 // only use it to test wedge/hodge in 3D. It will fail to compile in other dimensions (static_assert is there for a good reason)
+#endif // #if USE_DIRECTX_VECTOR
 
 //
 // Wedge product
@@ -36,7 +50,7 @@ private:
 		template<typename scalar_t, size_t space_mask0, size_t space_mask2, size_t rank_size0, size_t rank_size2>
 		wedge_product_internal(multivector_t<scalar_t, space_mask0, rank_size0>& result, const scalar_t& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
 		{
-			using traits = alternating_traits<subspace_mask, subspace_mask2>;
+			using traits = SBLib::alternating_traits<subspace_mask, subspace_mask2>;
 			using ref_type = decltype( result.get<(subspace_mask ^ subspace_mask2)>() );
 			assign<ref_type>::alternate_multiply<traits::sign>(result.get<(subspace_mask ^ subspace_mask2)>(), u, v.get<subspace_mask2>());
 		}
@@ -46,7 +60,7 @@ public:
 	template<typename scalar_t, size_t space_mask0, size_t space_mask1, size_t space_mask2, size_t rank_size0, size_t rank_size1, size_t rank_size2>
 	wedge_product_helper(multivector_t<scalar_t, space_mask0, rank_size0>& result, const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
 	{
-		for_each_combination< select_combinations<space_mask2, rank_size2> >::iterate<wedge_product_internal>(result, u.get<subspace_mask>(), v);
+		SBLib::for_each_combination< SBLib::select_combinations<space_mask2, rank_size2> >::iterate<wedge_product_internal>(result, u.get<subspace_mask>(), v);
 	}
 };
 //
@@ -55,12 +69,13 @@ public:
 template<typename scalar_t, size_t space_mask1, size_t space_mask2, size_t rank_size1, size_t rank_size2>
 auto wedge_product(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
 {
-	multivector_t<scalar_t, (space_mask1 | space_mask2), (rank_size1 + rank_size2)> result;
-	for_each_combination< select_combinations<space_mask1, rank_size1> >::iterate<wedge_product_helper>(result, u, v);
+	using multivec_t = multivector_t<scalar_t, (space_mask1 | space_mask2), (rank_size1 + rank_size2)>;
+	multivec_t result;
+	SBLib::for_each_combination< SBLib::select_combinations<space_mask1, rank_size1> >::iterate<wedge_product_helper>(result, u, v);
 	return std::move(result);
 }
 
-#if USE_DIRECTX_VECTOR
+#if USE_DIRECTX_VECTOR_HACK
 //
 // HACK ALERT : temporary test code for optimization check.
 // Once optimized, triple hodge on dot product cause about 44% performance loss (13 instructions instead of 9), which is bad.
@@ -71,7 +86,8 @@ auto wedge_product(const multivector_t<scalar_t, space_mask1, rank_size1>& u, co
 template<size_t space_mask>
 auto wedge_product(const vector_t<float, space_mask>& u, const multivector_t<float, space_mask, vector_t<float, space_mask>::dimension_size - 1>& v)
 {
-	using multivec_t = multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size>;
+	static_assert(vector_t<float, space_mask>::dimension_size == 3, "These hacks are only working in 3 dimensions.");
+	using multivec_t = multivector_t<float, space_mask, vector_t<float, space_mask>::dimension_size>;
 	multivec_t result(multivec_t::UNINITIALIZED);
 	result.components.container[0] = DirectX::XMVector3Dot(u.components.container[0], (*v).components.container[0]);
 	for (size_t batch = 1; batch != u.components.container.size(); ++batch)
@@ -84,6 +100,7 @@ auto wedge_product(const vector_t<float, space_mask>& u, const multivector_t<flo
 template<size_t space_mask>
 auto wedge_product(const vector_t<float, space_mask>& u, const vector_t<float, space_mask>& v)
 {
+	static_assert(vector_t<float, space_mask>::dimension_size == 3, "These hacks are only working in 3 dimensions.");
 	using multivec_t = multivector_t<float, space_mask, 1>;
 	multivec_t result(multivec_t::UNINITIALIZED);
 	result.components.container[0] = DirectX::XMVector3Cross(u.components.container[0], v.components.container[0]);
@@ -108,12 +125,12 @@ private:
 	template<typename scalar_t>
 	struct assign
 	{
-		template<int sign> static constexpr void conjugate(scalar_t, const scalar_t&) {}; // result is 0 so nothing to do
+		template<int sign> static constexpr void conjugate(scalar_t, const scalar_t&) {}; // result is not in destination space : nothing to do
 	};
 	template<typename scalar_t>
 	struct assign<scalar_t&>
 	{
-		template<int sign> static constexpr void conjugate(scalar_t& result, const scalar_t& u); // should not be called
+		template<int sign> static constexpr void conjugate(scalar_t& result, const scalar_t& u); // should not be called ever
 		template<>         static constexpr void conjugate<+1>(scalar_t& result, const scalar_t& u) { result = +u; }
 		template<>         static constexpr void conjugate<-1>(scalar_t& result, const scalar_t& u) { result = -u; }
 	};
@@ -122,7 +139,7 @@ public:
 	template<typename scalar_t, size_t space_mask0, size_t space_mask1, size_t rank_size0, size_t rank_size1>
 	hodge_conjugate_helper(multivector_t<scalar_t, space_mask0, rank_size0>& result, const multivector_t<scalar_t, space_mask1, rank_size1>& u)
 	{
-		using traits = hodge_conjugacy_traits<subspace_mask, space_mask0>;
+		using traits = SBLib::hodge_conjugacy_traits<subspace_mask, space_mask0>;
 		using ref_type = decltype(result.get<traits::bit_set>());
 		static_assert((subspace_mask & space_mask0) == subspace_mask, "Cannot calculate Hodge dual over non-embedding space. Please project onto target space first.");
 		static_assert((subspace_mask ^ traits::bit_set) == space_mask0, "Incorrect dual space.");
@@ -135,12 +152,13 @@ public:
 template<typename scalar_t, size_t space_mask, size_t rank_size>
 auto hodge_conjugate(const multivector_t<scalar_t, space_mask, rank_size>& u)
 {
-	multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size - rank_size> result;
-	for_each_combination< select_combinations<space_mask, rank_size> >::iterate<hodge_conjugate_helper>(result, u);
+	using multivec_t = multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size - rank_size>;
+	multivec_t result(multivec_t::UNINITIALIZED);
+	SBLib::for_each_combination< SBLib::select_combinations<space_mask, rank_size> >::iterate<hodge_conjugate_helper>(result, u);
 	return std::move(result);
 }
 
-#if USE_DIRECTX_VECTOR
+#if USE_DIRECTX_VECTOR_HACK
 //
 // HACK ALERT : temporary test code for optimization check. This won't work at all in generic cases (it works in dim 3)
 // Once optimized, double hodge on dot product cause about 44% performance loss (13 instructions instead of 9), which is bad.
@@ -150,10 +168,9 @@ static const __m128i maskNeg2 = DirectX::XMVECTORU32{ 0x00000000u, 0x80000000u, 
 template<size_t space_mask, size_t rank_size>
 auto hodge_conjugate(const multivector_t<float, space_mask, rank_size>& u)
 {
-	using multivec_t = multivector_t<float, space_mask, bit_traits<space_mask>::population_count - rank_size>;
+	static_assert(vector_t<float, space_mask>::dimension_size == 3, "These hacks are only working in 3 dimensions.");
+	using multivec_t = multivector_t<float, space_mask, SBLib::bit_traits<space_mask>::population_count - rank_size>;
 	multivec_t result(multivec_t::UNINITIALIZED);
-	//static const DirectX::XMVECTOR sign{ 1.0f, -1.0f, 1.0f, 1.0f };
-	//result.components.container[0] = DirectX::XMVectorMultiply(u.components.container[0], sign);
 	result.components.container[0] = _mm_castsi128_ps(_mm_xor_si128(_mm_castps_si128(u.components.container[0]), maskNeg2));
 	return std::move(result);
 }
@@ -247,7 +264,7 @@ public:
 			{
 				do_action(std::ostream& out)
 				{
-					enum { first_bit = bit_traits<bit_mask>::get_bit<0>(), };
+					enum { first_bit = SBLib::bit_traits<bit_mask>::get_bit<0>(), };
 					const std::string delimiter = (loop == first_bit) ? "" : outer_basis_traits::delimiter();
 					out << delimiter << outer_basis_traits::symbol() << outer_basis_traits::accessor_prefix() << bit_index << outer_basis_traits::accessor_postfix();
 				}
@@ -261,10 +278,10 @@ public:
 			using type_t = multivector_t<scalar_t, space_mask, rank_size>;
 			using output_traits_t = output_traits<type_t>;
 			const std::string delimiter = (loop == 0) ? "" : output_traits_t::delimiter();
-			const std::string prefix    = (bit_traits<bit_mask>::population_count <= 1) ? " " : output_traits_t::prefix();
-			const std::string postfix   = (bit_traits<bit_mask>::population_count <= 1) ? "" : output_traits_t::postfix();
+			const std::string prefix    = (SBLib::bit_traits<bit_mask>::population_count <= 1) ? " " : output_traits_t::prefix();
+			const std::string postfix   = (SBLib::bit_traits<bit_mask>::population_count <= 1) ? "" : output_traits_t::postfix();
 			out << delimiter << V.get<bit_mask>() << prefix;
-			for_each_bit_index<bit_mask>::iterate<output_basis<outer_basis_traits<output_traits_t>>::do_action>(out);
+			SBLib::for_each_bit_index<bit_mask>::iterate<output_basis<outer_basis_traits<output_traits_t>>::do_action>(out);
 			out << postfix;
 		}
 
@@ -287,7 +304,7 @@ std::string to_string(const multivector_t<field_type, space_mask, rank_size>& V)
 	ss << output_traits_t::prefix();
 
 #if USING_STATIC_FOR_EACH_OUTPUT
-	for_each_combination<select_combinations<space_mask, rank_size>>::iterate<output_multivector_components<output_traits>::do_action>(ss, V);
+	SBLib::for_each_combination<SBLib::select_combinations<space_mask, rank_size>>::iterate<output_multivector_components<output_traits>::do_action>(ss, V);
 #else // #if USING_STATIC_FOR_EACH_OUTPUT
 	std::string delimiter;
 	for (size_t index = 0; index < V.dimension_size; ++index)
@@ -417,7 +434,7 @@ class test_combination : public RegisteredFunctor
 					do_action_internal(std::ostream& out)
 					{
 						const std::string delimiter = (loop == 0) ? "" : "^";
-						out << delimiter << "e" << bit_traits<space_mask>::get_bit_index<bit_mask>();
+						out << delimiter << "e" << SBLib::bit_traits<space_mask>::get_bit_index<bit_mask>();
 					}
 				};
 
@@ -427,23 +444,23 @@ class test_combination : public RegisteredFunctor
 				{
 					do_action(std::ostream& out)
 					{
-						using traits = bit_traits<value>;
+						using traits = SBLib::bit_traits<value>;
 						enum : size_t
 						{
-							index            = combinations<space_mask>::select<traits::population_count>::get_components_index<value>(),
+							index            = SBLib::select_combinations<space_mask, traits::population_count>::get_components_index<value>(),
 
-							equiv_space_mask = (1uLL << bit_traits<space_mask>::population_count) - 1,
-							equiv_value      = combinations<equiv_space_mask>::select<traits::population_count>::get<index>(),
+							equiv_space_mask = (1uLL << SBLib::bit_traits<space_mask>::population_count) - 1,
+							equiv_value      = SBLib::select_combinations<equiv_space_mask, traits::population_count>::get<index>(),
 						};
-						using equiv_traits = bit_traits<equiv_value>;
+						using equiv_traits = SBLib::bit_traits<equiv_value>;
 						out << "\t\t";
 						std::stringstream ss;
-						for_each_bit<traits::bit_mask>::iterate<do_action_internal>(ss);
+						SBLib::for_each_bit<traits::bit_mask>::iterate<do_action_internal>(ss);
 						out << std::left;
 						out << std::setw(24) << ss.str();
 						ss = std::stringstream();
 						out << std::setw(1) << " ~ ";
-						for_each_bit<equiv_traits::bit_mask>::iterate<do_action_internal>(ss);
+						SBLib::for_each_bit<equiv_traits::bit_mask>::iterate<do_action_internal>(ss);
 						out << std::setw(24) << ss.str();
 						ss.clear();
 						out << std::setw(1) << "\t(" << equiv_value << ")\t";
@@ -456,14 +473,14 @@ class test_combination : public RegisteredFunctor
 					static_assert(loop == 0, "Invalid loop");
 					do_action(std::ostream& out)
 					{
-						using traits = bit_traits<0>;
+						using traits = SBLib::bit_traits<0>;
 						enum : size_t
 						{
 							value = 0,
-							index = combinations<space_mask>::select<traits::population_count>::get_components_index<value>(),
+							index = SBLib::combinations<space_mask>::select<traits::population_count>::get_components_index<value>(),
 
-							equiv_space_mask = (1uLL << bit_traits<space_mask>::population_count) - 1,
-							equiv_value = combinations<equiv_space_mask>::select<traits::population_count>::get<index>(),
+							equiv_space_mask = (1uLL << SBLib::bit_traits<space_mask>::population_count) - 1,
+							equiv_value = SBLib::combinations<equiv_space_mask>::select<traits::population_count>::get<index>(),
 						};
 						static_assert(equiv_value == 0, "invalid scalar basis");
 						out << "\t\t";
@@ -481,15 +498,15 @@ class test_combination : public RegisteredFunctor
 			output_rank(std::ostream& out)
 			{
 				out << "\tRank = " << rank_size << std::endl;
-				for_each_combination<select_combinations<space_mask, rank_size>>::iterate<output_combination<space_mask>::do_action>(out);
+				SBLib::for_each_combination<SBLib::select_combinations<space_mask, rank_size>>::iterate<output_combination<space_mask>::do_action>(out);
 			};
 		};
 
 	public:
 		static void do_action(std::ostream& out)
 		{
-			out << "Dim = " << combinations<space_mask>::dimension_size << ":" << std::endl;
-			static_for_each<0, combinations<space_mask>::dimension_size + 1>::iterate<output_rank>(out);
+			out << "Dim = " << SBLib::combinations<space_mask>::dimension_size << ":" << std::endl;
+			SBLib::static_for_each<0, SBLib::combinations<space_mask>::dimension_size + 1>::iterate<output_rank>(out);
 		};
 	};
 
@@ -509,7 +526,7 @@ class test_combination : public RegisteredFunctor
 	test_combination() : RegisteredFunctor(fct) {}
 	static void fct()
 	{
-		for_each_bit_index<SPACE_PRINT_DIMENSION_MASK>::iterate<do_action>(std::cout);
+		SBLib::for_each_bit_index<SPACE_PRINT_DIMENSION_MASK>::iterate<do_action>(std::cout);
 	}
 	static test_combination instance;
 };
@@ -539,9 +556,9 @@ class test_multivector : public RegisteredFunctor
 	test_multivector() : RegisteredFunctor(fct) {}
 	static void fct()
 	{
-		multivector_type1 test1{ cos(0.4f), -sin(0.4f), 0.0f/*, 0.0f*/ };
-		multivector_type1 test2{ sin(0.4f),  cos(0.4f), 0.0f/*, 0.0f*/ };
-		multivector_type1 test3{    0.0f,      0.0f,    1.0f/*, 0.0f*/ };
+		multivector_type1 test1{ cos(0.4f), -sin(0.4f), 0.0f };
+		multivector_type1 test2{ sin(0.4f),  cos(0.4f), 0.0f };
+		multivector_type1 test3{    0.0f,      0.0f,    1.0f };
 
 		const std::string input_filename = "../../tmp/test_multivector.in";
 		const bool onlytest = (std::cin.gcount() == 0);
@@ -598,22 +615,30 @@ class test_multivector : public RegisteredFunctor
 			}
 		}
 
+#if USE_DIRECTX_VECTOR
+		DirectX::XMVECTOR test1v{ test1.components.container[0] };
+		DirectX::XMVECTOR test2v{ test2.components.container[0] };
+#else // #if USE_DIRECTX_VECTOR
+		DirectX::XMVECTOR test1v{ test1.components.container[0], test1.components.container[1], test1.components.container[2] };
+		DirectX::XMVECTOR test2v{ test2.components.container[0], test2.components.container[1], test2.components.container[2] };
+#endif // #if USE_DIRECTX_VECTOR
+
 		auto test4 = (test1 ^ test2);
 		std::cout << test1 << " ^ " << test2 << " = " << test4 << std::endl;
 
 		auto test5 = CrossProduct(test1, test2);
 		std::cout << test1 << " x " << test2 << " = " << test5 << std::endl;
 
+		DirectX::XMVECTORF32 test5v;
+		test5v.v = DirectX::XMVector3Cross(test1v, test2v);
+		std::cout << test1 << " x " << test2 << " = " << test5v.f[0] << ", " << test5v.f[1] << ", " << test5v.f[2] << std::endl;
+
 		auto test6 = InnerProduct(test1, test2);
 		std::cout << test1 << " . " << test2 << " = " << test6 << std::endl;
 
-#if USE_DIRECTX_VECTOR
-		DirectX::XMVECTOR test1v{ test1.components.container[0] };
-		DirectX::XMVECTOR test2v{ test2.components.container[0] };
 		DirectX::XMVECTORF32 test6v;
 		test6v.v = DirectX::XMVector3Dot(test1v, test2v);
 		std::cout << test1 << " . " << test2 << " = " << test6v.f[0] << std::endl;
-#endif // #if USE_DIRECTX_VECTOR
 
 		auto test7 = (test1 ^ test2 ^ test3);
 		std::cout << "Det{" << test1 << test2 << test3 << "} = " << *test7 << std::endl;
@@ -800,7 +825,7 @@ class test_clifford_algebra : public RegisteredFunctor
 		e4 = (1 << 4),
 		e5 = (1 << 5),
 	};
-	typedef bit_traits<0xAB> traits;
+	typedef SBLib::bit_traits<0xAB> traits;
 
 	template<size_t first_loop_value>
 	struct output_bit
@@ -821,33 +846,33 @@ class test_clifford_algebra : public RegisteredFunctor
 	{
 		std::cout << traits::bit_mask << " (" << traits::population_count << ")";
 		std::cout << ": -> (";
-		for_each_bit<traits::bit_mask>::iterate<output_bit<0>::do_action>(std::cout);
+		SBLib::for_each_bit<traits::bit_mask>::iterate<output_bit<0>::do_action>(std::cout);
 		std::cout << ") ~ (";
-		for_each_bit_index<traits::bit_mask>::iterate<output_bit<traits::get_bit<0>()>::do_action>(std::cout);
+		SBLib::for_each_bit_index<traits::bit_mask>::iterate<output_bit<traits::get_bit<0>()>::do_action>(std::cout);
 		std::cout << ") ~ (";
-		for_each_bit_compoment<traits::bit_mask>::iterate<output_bit<traits::get_bit<0>()>::do_action>(std::cout);
+		SBLib::for_each_bit_compoment<traits::bit_mask>::iterate<output_bit<traits::get_bit<0>()>::do_action>(std::cout);
 		std::cout << ")" << std::endl;
 
 		std::cout << "((e0 ^ e2) ^ e1) \n\t= "
-			<< alternating_traits<(e0 ^ e2), e1>::sign
+			<< SBLib::alternating_traits<(e0 ^ e2), e1>::sign
 			<< " * (e0 ^ e1 ^ e2) \n\t= "
-			<< reversion_conjugacy_traits<(e0 ^ e2)>::sign * alternating_traits<(e2 ^ e0), e1, false>::sign
+			<< SBLib::reversion_conjugacy_traits<(e0 ^ e2)>::sign * SBLib::alternating_traits<(e2 ^ e0), e1, false>::sign
 			<< " * (e2 ^ e1 ^ e0)"
 			<< std::endl;
 
 		std::cout << "((e5 ^ e3 ^ e2) ^ (e4 ^ e0)) \n\t= "
-			<< reversion_conjugacy_traits<(e5 ^ e3 ^ e2)>::sign * reversion_conjugacy_traits<(e4 ^ e0)>::sign * alternating_traits<(e2 ^ e3 ^ e5), (e0 ^ e4)>::sign
-			* reversion_conjugacy_traits<(e5 ^ e4 ^ e3 ^ e2 ^ e0)>::sign
+			<< SBLib::reversion_conjugacy_traits<(e5 ^ e3 ^ e2)>::sign * SBLib::reversion_conjugacy_traits<(e4 ^ e0)>::sign * SBLib::alternating_traits<(e2 ^ e3 ^ e5), (e0 ^ e4)>::sign
+			* SBLib::reversion_conjugacy_traits<(e5 ^ e4 ^ e3 ^ e2 ^ e0)>::sign
 			<< " * (e5 ^ e4 ^ e3 ^ e2 ^ e0) \n\t= "
-			<< alternating_traits<(e5 ^ e3 ^ e2), (e4 ^ e0), false>::sign * reversion_conjugacy_traits<(e5 ^ e4 ^ e3 ^ e2 ^ e0)>::sign
+			<< SBLib::alternating_traits<(e5 ^ e3 ^ e2), (e4 ^ e0), false>::sign * SBLib::reversion_conjugacy_traits<(e5 ^ e4 ^ e3 ^ e2 ^ e0)>::sign
 			<< " * (e0 ^ e2 ^ e3 ^ e4 ^ e5)"
 			<< std::endl;
 
 		std::cout << "((e5 ^ e3 ^ e2) ^ (e5 ^ e1)) \n\t= "
-			<< reversion_conjugacy_traits<(e5 ^ e3 ^ e2)>::sign * reversion_conjugacy_traits<(e5 ^ e1)>::sign * alternating_traits<(e2 ^ e3 ^ e5), (e1 ^ e5)>::sign
-			* reversion_conjugacy_traits<(e5 ^ e5 ^ e3 ^ e2 ^ e1)>::sign
+			<< SBLib::reversion_conjugacy_traits<(e5 ^ e3 ^ e2)>::sign * SBLib::reversion_conjugacy_traits<(e5 ^ e1)>::sign * SBLib::alternating_traits<(e2 ^ e3 ^ e5), (e1 ^ e5)>::sign
+			* SBLib::reversion_conjugacy_traits<(e5 ^ e5 ^ e3 ^ e2 ^ e1)>::sign
 			<< " * (e5 ^ e5 ^ e3 ^ e2 ^ e1) \n\t= "
-			<< alternating_traits<(e5 ^ e3 ^ e2), (e5 ^ e1), false>::sign * reversion_conjugacy_traits<(e5 ^ e5 ^ e3 ^ e2 ^ e1)>::sign
+			<< SBLib::alternating_traits<(e5 ^ e3 ^ e2), (e5 ^ e1), false>::sign * SBLib::reversion_conjugacy_traits<(e5 ^ e5 ^ e3 ^ e2 ^ e1)>::sign
 			<< " * (e1 ^ e2 ^ e3 ^ e5 ^ e5)"
 			<< std::endl;
 	}
@@ -887,7 +912,7 @@ class test_multivector_space : public RegisteredFunctor
 	template<typename module_type, size_t rank_size>
 	struct uniform_multimodule_t
 		: module_t<typename module_type::field_t,
-				   binomial_coefficient<module_type::dimension, rank_size>::value>
+				   SBLib::binomial_coefficient<module_type::dimension, rank_size>::value>
 	{
 		enum { rank = rank_size };
 
@@ -958,79 +983,79 @@ class test_multivector_space : public RegisteredFunctor
 	static void fct()
 	{
 		module_t<float, 1> bin0({
-			binomial_coefficient<0,0>::value,
+			SBLib::binomial_coefficient<0,0>::value,
 		});
 		module_t<float, 2> bin1({
-			binomial_coefficient<1, 0>::value,
-			binomial_coefficient<1, 1>::value,
+			SBLib::binomial_coefficient<1, 0>::value,
+			SBLib::binomial_coefficient<1, 1>::value,
 		});
 		module_t<float, 3> bin2({
-			binomial_coefficient<2, 0>::value,
-			binomial_coefficient<2, 1>::value,
-			binomial_coefficient<2, 2>::value,
+			SBLib::binomial_coefficient<2, 0>::value,
+			SBLib::binomial_coefficient<2, 1>::value,
+			SBLib::binomial_coefficient<2, 2>::value,
 		});
 		module_t<float, 4> bin3({
-			binomial_coefficient<3, 0>::value,
-			binomial_coefficient<3, 1>::value,
-			binomial_coefficient<3, 2>::value,
-			binomial_coefficient<3, 3>::value,
+			SBLib::binomial_coefficient<3, 0>::value,
+			SBLib::binomial_coefficient<3, 1>::value,
+			SBLib::binomial_coefficient<3, 2>::value,
+			SBLib::binomial_coefficient<3, 3>::value,
 		});
 		module_t<float, 5> bin4({
-			binomial_coefficient<4, 0>::value,
-			binomial_coefficient<4, 1>::value,
-			binomial_coefficient<4, 2>::value,
-			binomial_coefficient<4, 3>::value,
-			binomial_coefficient<4, 4>::value,
+			SBLib::binomial_coefficient<4, 0>::value,
+			SBLib::binomial_coefficient<4, 1>::value,
+			SBLib::binomial_coefficient<4, 2>::value,
+			SBLib::binomial_coefficient<4, 3>::value,
+			SBLib::binomial_coefficient<4, 4>::value,
 		});
 		module_t<float, 6> bin5({
-			binomial_coefficient<5, 0>::value,
-			binomial_coefficient<5, 1>::value,
-			binomial_coefficient<5, 2>::value,
-			binomial_coefficient<5, 3>::value,
-			binomial_coefficient<5, 4>::value,
-			binomial_coefficient<5, 5>::value,
+			SBLib::binomial_coefficient<5, 0>::value,
+			SBLib::binomial_coefficient<5, 1>::value,
+			SBLib::binomial_coefficient<5, 2>::value,
+			SBLib::binomial_coefficient<5, 3>::value,
+			SBLib::binomial_coefficient<5, 4>::value,
+			SBLib::binomial_coefficient<5, 5>::value,
 		});
 		module_t<float, 7> bin6({
-			binomial_coefficient<6, 0>::value,
-			binomial_coefficient<6, 1>::value,
-			binomial_coefficient<6, 2>::value,
-			binomial_coefficient<6, 3>::value,
-			binomial_coefficient<6, 4>::value,
-			binomial_coefficient<6, 5>::value,
-			binomial_coefficient<6, 6>::value,
+			SBLib::binomial_coefficient<6, 0>::value,
+			SBLib::binomial_coefficient<6, 1>::value,
+			SBLib::binomial_coefficient<6, 2>::value,
+			SBLib::binomial_coefficient<6, 3>::value,
+			SBLib::binomial_coefficient<6, 4>::value,
+			SBLib::binomial_coefficient<6, 5>::value,
+			SBLib::binomial_coefficient<6, 6>::value,
 		});
 		module_t<float, 8> bin7({
-			binomial_coefficient<7, 0>::value,
-			binomial_coefficient<7, 1>::value,
-			binomial_coefficient<7, 2>::value,
-			binomial_coefficient<7, 3>::value,
-			binomial_coefficient<7, 4>::value,
-			binomial_coefficient<7, 5>::value,
-			binomial_coefficient<7, 6>::value,
-			binomial_coefficient<7, 7>::value,
+			SBLib::binomial_coefficient<7, 0>::value,
+			SBLib::binomial_coefficient<7, 1>::value,
+			SBLib::binomial_coefficient<7, 2>::value,
+			SBLib::binomial_coefficient<7, 3>::value,
+			SBLib::binomial_coefficient<7, 4>::value,
+			SBLib::binomial_coefficient<7, 5>::value,
+			SBLib::binomial_coefficient<7, 6>::value,
+			SBLib::binomial_coefficient<7, 7>::value,
 		});
 		module_t<float, 9> bin8({
-			binomial_coefficient<8, 0>::value,
-			binomial_coefficient<8, 1>::value,
-			binomial_coefficient<8, 2>::value,
-			binomial_coefficient<8, 3>::value,
-			binomial_coefficient<8, 4>::value,
-			binomial_coefficient<8, 5>::value,
-			binomial_coefficient<8, 6>::value,
-			binomial_coefficient<8, 7>::value,
-			binomial_coefficient<8, 8>::value,
+			SBLib::binomial_coefficient<8, 0>::value,
+			SBLib::binomial_coefficient<8, 1>::value,
+			SBLib::binomial_coefficient<8, 2>::value,
+			SBLib::binomial_coefficient<8, 3>::value,
+			SBLib::binomial_coefficient<8, 4>::value,
+			SBLib::binomial_coefficient<8, 5>::value,
+			SBLib::binomial_coefficient<8, 6>::value,
+			SBLib::binomial_coefficient<8, 7>::value,
+			SBLib::binomial_coefficient<8, 8>::value,
 		});
 		module_t<float, 10> bin9({
-			binomial_coefficient<9, 0>::value,
-			binomial_coefficient<9, 1>::value,
-			binomial_coefficient<9, 2>::value,
-			binomial_coefficient<9, 3>::value,
-			binomial_coefficient<9, 4>::value,
-			binomial_coefficient<9, 5>::value,
-			binomial_coefficient<9, 6>::value,
-			binomial_coefficient<9, 7>::value,
-			binomial_coefficient<9, 8>::value,
-			binomial_coefficient<9, 9>::value,
+			SBLib::binomial_coefficient<9, 0>::value,
+			SBLib::binomial_coefficient<9, 1>::value,
+			SBLib::binomial_coefficient<9, 2>::value,
+			SBLib::binomial_coefficient<9, 3>::value,
+			SBLib::binomial_coefficient<9, 4>::value,
+			SBLib::binomial_coefficient<9, 5>::value,
+			SBLib::binomial_coefficient<9, 6>::value,
+			SBLib::binomial_coefficient<9, 7>::value,
+			SBLib::binomial_coefficient<9, 8>::value,
+			SBLib::binomial_coefficient<9, 9>::value,
 		});
 		std::cout
 			<< to_string<out_t>(bin0) << std::endl

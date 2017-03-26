@@ -1,4 +1,5 @@
 #include <Mathematics/binomial_coefficient.h>
+using namespace SBLib;
 
 #define DEFINE_DEFAULT_VARIABLE( X ) decltype(X) X
 #define DEFINE_VARIABLE( X ) decltype(X) X = decltype(X)

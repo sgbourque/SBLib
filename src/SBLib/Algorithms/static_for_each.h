@@ -1,5 +1,6 @@
 #pragma once
-
+namespace SBLib::Algorithms
+{
 struct increment_index_helper
 {
 	template<size_t index>
@@ -20,7 +21,7 @@ struct get_index_helper
 template<size_t begin, size_t end, class get_helper = get_index_helper, class increment_helper = increment_index_helper>
 struct static_for_each
 {
-	template<template<size_t, size_t> class fct_type, typename... type_t>
+	template<template<size_t, size_t> typename fct_type, typename... type_t>
 	static void iterate(type_t&&... types)
 	{
 		fct_type<get_helper::get<begin>(), begin>(types...);
@@ -35,3 +36,5 @@ struct static_for_each<end, end, get_helper, increment_helper>
 	{
 	}
 };
+} // namespace SBLib::Algorithms
+namespace SBLib { using namespace Algorithms; }

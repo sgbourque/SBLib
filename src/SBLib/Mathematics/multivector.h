@@ -1,6 +1,8 @@
 #pragma once
 #include <Mathematics/canonical_components.h>
 #include <Mathematics/combinations.h>
+namespace SBLib::Mathematics
+{
 //
 // multivector_t
 //
@@ -72,7 +74,7 @@ public:
 	using scalar_type     = typename canonical_components_t<scalar_t, dimension_size>::scalar_type;
 
 	enum eUNINITIALIZED : bool { UNINITIALIZED = true, };
-	multivector_t(eUNINITIALIZED) {};
+	multivector_t(eUNINITIALIZED) : components(components_type::UNINITIALIZED) {};
 
 	multivector_t() : components() {};
 	multivector_t(const multivector_t& v) : components(v.components) {};
@@ -223,7 +225,7 @@ public:
 	using scalar_type     = typename canonical_components_t<scalar_t, dimension_size>::scalar_type;
 
 	enum eUNINITIALIZED : bool { UNINITIALIZED = true, };
-	multivector_t(eUNINITIALIZED) {};
+	multivector_t(eUNINITIALIZED) : components(components_type::UNINITIALIZED) {};
 
 	multivector_t() : components() {};
 	multivector_t(const multivector_t& v) : components(v.components) {};
@@ -271,3 +273,5 @@ public:
 
 	components_type components;
 };
+} // namespace SBLib::Mathematics
+namespace SBLib { using namespace Mathematics; }

@@ -1,10 +1,10 @@
 #pragma once
-#define USE_DIRECTX_VECTOR 0
-
+#include <array>
+namespace SBLib::Containers::Mathematics
+{
 //
 // Generic fixed dimension
 //
-#include <array>
 template<template<typename, size_t> class canonical_components_type, typename scalar_t, size_t dimension>
 struct canonical_components_helper
 {
@@ -76,9 +76,6 @@ struct multiply_component_helper
 	template<typename scalar_t, size_t dimension>
 	multiply_component_helper(canonical_components_t<scalar_t, dimension>& result, const canonical_components_t<scalar_t, dimension>& u, const scalar_t& scale)
 	{
-#if USE_DIRECTX_VECTOR
-		using namespace DirectX;
-#endif // #if USE_DIRECTX_VECTOR
 		result.container[index] = u.container[index] * scale;
 	}
 };
@@ -88,10 +85,16 @@ struct add_component_helper
 	template<typename scalar_t, size_t dimension>
 	add_component_helper(canonical_components_t<scalar_t, dimension>& result, const canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
 	{
-#if USE_DIRECTX_VECTOR
-		using namespace DirectX;
-#endif // #if USE_DIRECTX_VECTOR
 		result.container[index] = u.container[index] + v.container[index];
+	}
+};
+template<size_t index, size_t loop>
+struct sub_component_helper
+{
+	template<typename scalar_t, size_t dimension>
+	sub_component_helper(canonical_components_t<scalar_t, dimension>& result, const canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
+	{
+		result.container[index] = u.container[index] - v.container[index];
 	}
 };
 template<typename scalar_t, size_t dimension>
@@ -147,9 +150,40 @@ inline auto operator +(const canonical_components_t<scalar_t, dimension>& u, con
 	static_for_each<0, compoments_t::parallel_count>::iterate<add_component_helper>(result, u, v);
 	return std::move(result);
 }
+template<typename scalar_t, size_t dimension>
+inline const auto& operator -=(canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
+{
+	using compoments_t = canonical_components_t<scalar_t, dimension>;
+	static_for_each<0, compoments_t::parallel_count>::iterate<sub_component_helper>(u, u, v);
+	return u;
+}
+template<typename scalar_t, size_t dimension>
+inline auto operator -(const canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
+{
+	using compoments_t = canonical_components_t<scalar_t, dimension>;
+	compoments_t result(compoments_t::UNINITIALIZED);
+	static_for_each<0, compoments_t::parallel_count>::iterate<sub_component_helper>(result, u, v);
+	return std::move(result);
+}
+} // namespace SBLib::Containers::Mathematics
+namespace SBLib { using namespace Containers::Mathematics; }
 
+//
+// TODO : put this in a separate file since it is optimizations overload
+//
 #if USE_DIRECTX_VECTOR
 #include <DirectXMath.h>
+namespace SBLib::Containers::Mathematics
+{
+using DirectX::operator*=;
+using DirectX::operator*;
+using DirectX::operator/=;
+using DirectX::operator/;
+using DirectX::operator+=;
+using DirectX::operator+;
+using DirectX::operator-=;
+using DirectX::operator-;
+
 //
 // Specialized 4 x float
 //
@@ -174,27 +208,14 @@ public:
 private:
 	using this_type = canonical_components_type<scalar_type, dimension_size>;
 };
-//inline auto begin(canonical_components_t<float, 4>& u)
-//{
-//	return &u.container;
-//}
-//inline auto begin(const canonical_components_t<float, 4>& u)
-//{
-//	return &u.container;
-//}
-//inline auto end(const canonical_components_t<float, 4>& u)
-//{
-//	return &u.container + 1;
-//}
 
 inline const auto& operator *=(canonical_components_t<float, 4>& u, const float scale)
 {
-	using namespace DirectX;
 	return u.container.v *= scale;
 }
 inline auto operator *(const canonical_components_t<float, 4> u, const float scale)
 {
-	return std::move(u.container * scale);
+	return std::move(u.container.v * scale);
 }
 inline auto operator *(const float scale, const canonical_components_t<float, 4> v)
 {
@@ -202,23 +223,27 @@ inline auto operator *(const float scale, const canonical_components_t<float, 4>
 }
 inline const auto& operator /=(canonical_components_t<float, 4>& u, const float scale)
 {
-	using namespace DirectX;
-	u.container.v /= scale;
-	return u;
+	return u.container.v /= scale;
 }
 inline auto operator /(const canonical_components_t<float, 4> u, const float scale)
 {
-	return std::move(u.container / scale);
+	return std::move(u.container.v / scale);
 }
 inline const auto& operator +=(canonical_components_t<float, 4>& u, const canonical_components_t<float, 4> v)
 {
-	using namespace DirectX;
-	u.container.v += v.container.v;
-	return u;
+	return u.container.v += v.container.v;
 }
 inline auto operator +(const canonical_components_t<float, 4> u, const canonical_components_t<float, 4> v)
 {
-	return std::move(u.container + v.container);
+	return std::move(u.container.v + v.container.v);
+}
+inline const auto& operator -=(canonical_components_t<float, 4>& u, const canonical_components_t<float, 4> v)
+{
+	return u.container.v -= v.container.v;
+}
+inline auto operator -(const canonical_components_t<float, 4> u, const canonical_components_t<float, 4> v)
+{
+	return std::move(u.container.v - v.container.v);
 }
 
 //
@@ -258,15 +283,15 @@ template<size_t dimension>
 struct canonical_components_t<float, dimension> : canonical_components_helper<canonical_components_t, float, dimension>
 {
 private:
-	using parallel_type = typename canonical_components_helper<::canonical_components_t, float, dimension>::parallel_type;
+	using parallel_type = typename canonical_components_helper<Mathematics::canonical_components_t, float, dimension>::parallel_type;
 	template<size_t count, size_t index>
 	struct unpack
 	{
 		template<typename... scalars>
 		static void assign(container_type& dest, scalar_type&& s1, scalar_type&& s2, scalar_type&& s3, scalar_type&& s4, scalars&&... coords)
 		{
-			static_assert(parallel_size == 4, "Too many initializers.");
-			static_assert(count <= (parallel_size * parallel_count), "Too many initializers.");
+			static_assert(parallel_size == 4, "Expecting floats packed by 4.");
+			static_assert(count <= dimension, "Too many initializers.");
 			parallel_type result = parallel_type{ s1, s2, s3, s4 };
 			dest[index] = std::move(result);
 			unpack<(count > parallel_size) ? count - parallel_size : 0, index + 1>::assign(dest, std::forward<scalars>(coords)...);
@@ -274,7 +299,7 @@ private:
 		template<typename... scalars>
 		static void assign(container_type& dest, scalars&&... coords)
 		{
-			static_assert(count <= (parallel_size * parallel_count), "Too many initializers.");
+			static_assert(count <= dimension, "Too many initializers.");
 			parallel_type result = parallel_type{std::forward<scalars>(coords)...};
 			dest[index] = std::move(result);
 			unpack<(count > parallel_size) ? count - parallel_size : 0, index + 1>::assign(dest, std::forward<scalars>(coords + parallel_size)...);
@@ -301,7 +326,7 @@ public:
 	explicit canonical_components_t(const raw_type& v) { container.v = v; };
 	template<typename... scalars> explicit canonical_components_t(scalar_type&& first, scalars&&... coords) : container()
 	{
-		static_assert( sizeof...(scalars) < (parallel_size * parallel_count), "Too many initializers." );
+		static_assert( sizeof...(scalars) < dimension, "Too many initializers." );
 		unpack<sizeof...(coords) + 1, 0>::assign(container, std::move(first), std::forward<scalars>(coords)...);
 	}
 
@@ -316,4 +341,5 @@ public:
 
 	container_type container;
 };
+} // namespace SBLib::Containers::Mathematics
 #endif // #if USE_DIRECTX_VECTOR

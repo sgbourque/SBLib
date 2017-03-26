@@ -1,5 +1,6 @@
 #pragma once
-
+namespace SBLib::Mathematics
+{
 //
 // binomial_coefficient
 //
@@ -82,3 +83,5 @@ public:
 		value = (rank_size >= 0) ? 1 - 2 * rank_mod_2 : 2 * rank_mod_2 - 1,
 	};
 };
+} // namespace SBLib::Mathematics
+namespace SBLib { using namespace Mathematics; }

@@ -1,6 +1,7 @@
 #pragma once
 #include <Algorithms/static_for_each.h>
-
+namespace SBLib::Traits
+{
 template<size_t bit_mask>
 struct bit_traits
 {
@@ -107,30 +108,13 @@ struct next_bit_helper
 	template<size_t bit>
 	static constexpr size_t increment()
 	{
-		enum : size_t
-		{
-			next_index = bit_traits<bit_mask>::get_bit_component<bit>() + 1,
-		};
+		enum : size_t { next_index = bit_traits<bit_mask>::get_bit_component<bit>() + 1, };
 		return bit_traits<bit_mask>::get_bit<next_index>();
 	}
 };
 
 template<size_t bit_mask> struct for_each_bit : static_for_each<0, bit_traits<bit_mask>::population_count, get_bit_helper<bit_mask>> {};
-template<size_t bit_mask> struct for_each_bit_compoment
-{
-	template<template<size_t, size_t> class fct_type, typename... type_t>
-	static void iterate(type_t&&... types)
-	{
-		using traits = bit_traits<bit_mask>;
-		static_for_each<traits::get_bit<0>(), traits::get_bit<traits::population_count>(), get_bit_component_helper<bit_mask>, next_bit_helper<bit_mask>>::iterate<fct_type>(types...);
-	}
-};
-template<size_t bit_mask> struct for_each_bit_index
-{
-	template<template<size_t, size_t> class fct_type, typename... type_t>
-	static void iterate(type_t&&... types)
-	{
-		using traits = bit_traits<bit_mask>;
-		static_for_each<traits::get_bit<0>(), traits::get_bit<traits::population_count>(), get_bit_index_helper<bit_mask>, next_bit_helper<bit_mask>>::iterate<fct_type>(types...);
-	}
-};
+template<size_t bit_mask> struct for_each_bit_compoment : static_for_each<bit_traits<bit_mask>::get_bit<0>(), bit_traits<bit_mask>::get_bit<bit_traits<bit_mask>::population_count>(), get_bit_component_helper<bit_mask>, next_bit_helper<bit_mask>> {};
+template<size_t bit_mask> struct for_each_bit_index : static_for_each<bit_traits<bit_mask>::get_bit<0>(), bit_traits<bit_mask>::get_bit<bit_traits<bit_mask>::population_count>(), get_bit_index_helper<bit_mask>, next_bit_helper<bit_mask>> {};
+} // namespace SBLib::Traits
+namespace SBLib { using namespace Traits; }

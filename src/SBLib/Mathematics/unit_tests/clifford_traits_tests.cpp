@@ -1,4 +1,5 @@
 #include <Traits/clifford_traits.h>
+using namespace SBLib;
 
 #if defined( STATIC_UNIT_TESTS )
 #define TEST_CLIFFORD_TRAITS

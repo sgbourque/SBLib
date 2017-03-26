@@ -3,6 +3,8 @@
 #include <Mathematics/binomial_coefficient.h>
 #include <Traits/bit_traits.h>
 
+namespace SBLib::Mathematics
+{
 //
 // combinations
 //
@@ -226,3 +228,5 @@ public:
 	}
 };
 template<typename combinations_traits_t> struct for_each_combination : static_for_each<0, combinations_traits_t::count, get_combination_helper<combinations_traits_t>, increment_index_helper> {};
+} // namespace SBLib::Mathematics
+namespace SBLib { using namespace Mathematics; }
