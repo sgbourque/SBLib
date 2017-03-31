@@ -69,12 +69,13 @@ struct operator_node
 	enum : typename node_depth::value_type { tree_depth = node_depth::value, };
 	using this_type      = typename operator_node<operator_type, node_depth, T...>;
 	using construct_type = typename operator_node<operator_type, std::integral_constant<typename node_depth::value_type, tree_depth + 1>, T...>;
-	using result_type    = typename operator_traits<operator_type, T...>::result_type;
 	using return_type    = typename operator_node<operator_type, std::integral_constant<typename node_depth::value_type, (tree_depth - 1)>, T...>;
+	using traits_type    = typename operator_traits<operator_type, T...>;
+	using result_type    = typename traits_type::result_type;
 
 	operator_node(T... op) : operands{ std::forward<T>(op)... } {}
 
-	template< typename T = std::enable_if_t<(tree_depth > 0)> >
+	template< typename = std::enable_if_t<(tree_depth > 0)> >
 	auto leave()
 	{
 		static_assert(tree_depth != 0, "WTF?");
@@ -123,25 +124,44 @@ private:
 
 
 //
-// identity_operator : defers evaluation of operands
+// generic_operator
+// Defines basic operators logic, other operators should juste simply derive from this one and add whatever they would need into operator_traits.
+// You may want to overload name() to have a pretty name debug print...
 //
-struct identity_operator
+template<typename operator_type>
+struct generic_operator
 {
 	template<typename... T>
 	static auto assign(T... args)
 	{
-		return operator_node<identity_operator, tree_depth_construct, T...>{std::forward<T>(args)...}.leave();
+		return operator_node<operator_type, tree_depth_construct, T...>{std::forward<T>(args)...}.leave();
 	}
 
 	template<typename... T>
 	static auto evaluate(T... operands)
 	{
-		using traits = operator_traits<identity_operator, T...>;
+		using traits = operator_traits<operator_type, T...>;
 		return traits::evaluate(std::forward<T>(operands)...);
 	}
 
-	static constexpr char* name() { return "identity"; }
+	static constexpr auto name() { return typeid(operator_type).name(); }
 };
+
+
+//
+// identity_operator : defers evaluation of operands
+//
+struct identity_operator : generic_operator<identity_operator>
+{
+	static constexpr auto name() { return "identity"; }
+};
+//
+// Identity is essentially only well defined on a single operand in general.
+//
+// However, it could be possible to define it on multiple operand if it makes sense.
+// For instance, as a matrix operator, two-sided identity operation would naturally correspond to inner product on its operand.
+// This does not mean we should define it as such... but we could if needed...
+//
 template<typename T>
 struct operator_traits<identity_operator, T>
 {
@@ -159,24 +179,14 @@ struct operator_traits<identity_operator, T>
 // - need to implement operator_traits<operator, types...> for all supported combinations on the type.
 // c.f., demo with finite field below for a simple use.
 //
-// TODO : find a "nice" way to forward flat variadic evaluation (see manually expanded demo with finite field below)
+// TODO : find a "nice" (generic) way to forward flat variadic evaluation (see manually expanded demo with finite field below)
+// HINT : The generic way to do it will use operator tree flattening on nested operations on same types and operator_traits's result_type.
+// NOTE : general operators are neither commutative nor associative (think of function composition that need not be associative) but
+//        associative and/or commutative properties could be useful for generic operator simplification having any of these properties.
 //
-struct sum_operator
+struct sum_operator : generic_operator<sum_operator>
 {
-	template<typename... T>
-	static auto assign(T... args)
-	{
-		return operator_node<sum_operator, tree_depth_construct, T...>{std::forward<T>(args)...}.leave();
-	}
-
-	template<typename... T>
-	static auto evaluate(T... operands)
-	{
-		using traits = operator_traits<sum_operator, T...>;
-		return traits::evaluate(std::forward<T>(operands)...);
-	}
-
-	static constexpr char* name() { return "sum"; }
+	static constexpr auto name() { return "sum"; }
 };
 
 
