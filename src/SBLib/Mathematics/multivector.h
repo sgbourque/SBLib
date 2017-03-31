@@ -124,37 +124,37 @@ public:
 
 
 template<typename scalar_t, size_t space_mask, size_t rank_size>
-const auto& operator *=(multivector_t<scalar_t, space_mask, rank_size>& u, const scalar_t& scale)
+inline const auto& operator *=(multivector_t<scalar_t, space_mask, rank_size>& u, const scalar_t& scale)
 {
 	return u.components *= scale;
 }
 template<typename scalar_t, size_t space_mask, size_t rank_size>
-auto operator *(const multivector_t<scalar_t, space_mask, rank_size>& u, const scalar_t& scale)
+inline auto operator *(const multivector_t<scalar_t, space_mask, rank_size>& u, const scalar_t& scale)
 {
 	return multivector_t<scalar_t, space_mask, rank_size>(std::move(u.components * scale));
 }
 template<typename scalar_t, size_t space_mask, size_t rank_size>
-auto operator *(const scalar_t& scale, const multivector_t<scalar_t, space_mask, rank_size>& v)
+inline auto operator *(const scalar_t& scale, const multivector_t<scalar_t, space_mask, rank_size>& v)
 {
 	return std::move(v * scale);
 }
 template<typename scalar_t, size_t space_mask, size_t rank_size>
-const auto& operator /=(multivector_t<scalar_t, space_mask, rank_size>& u, const scalar_t& scale)
+inline const auto& operator /=(multivector_t<scalar_t, space_mask, rank_size>& u, const scalar_t& scale)
 {
 	return u.components /= scale;
 }
 template<typename scalar_t, size_t space_mask, size_t rank_size>
-auto operator /(const multivector_t<scalar_t, space_mask, rank_size>& u, const scalar_t& scale)
+inline auto operator /(const multivector_t<scalar_t, space_mask, rank_size>& u, const scalar_t& scale)
 {
 	return multivector_t<scalar_t, space_mask, rank_size>(std::move(v.components / scale));
 }
 template<typename scalar_t, size_t space_mask, size_t rank_size>
-const auto& operator +=(multivector_t<scalar_t, space_mask, rank_size>& u, multivector_t<scalar_t, space_mask, rank_size>& v)
+inline const auto& operator +=(multivector_t<scalar_t, space_mask, rank_size>& u, multivector_t<scalar_t, space_mask, rank_size>& v)
 {
 	return u.components += v.components;
 }
 template<typename scalar_t, size_t space_mask, size_t rank_size>
-auto operator +(const multivector_t<scalar_t, space_mask, rank_size>& u, const multivector_t<scalar_t, space_mask, rank_size>& v)
+inline auto operator +(const multivector_t<scalar_t, space_mask, rank_size>& u, const multivector_t<scalar_t, space_mask, rank_size>& v)
 {
 	return multivector_t<scalar_t, space_mask, rank_size>(std::move(u.components + v.components));
 }

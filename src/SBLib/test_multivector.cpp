@@ -3,6 +3,7 @@
 
 #include <fstream>
 
+#include <intrin.h> // for SSE / AVX
 #include <DirectXMath.h>
 
 namespace SBLib::Mathematics
