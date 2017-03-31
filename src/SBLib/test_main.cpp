@@ -128,7 +128,7 @@ struct operator_node
 
 	operator_node(operator_node&& original) : operands( std::move(original.operands) )
 	{
-		static_assert((tree_depth != 0), "Should never leave a possibly dirty operator. Please use leave().");
+		static_assert((tree_depth != 0), "Should never return a possibly dirty operator. Please use leave().");
 	}
 
 	operator_node(construct_type&& original) : operands(std::move(original.operands))
@@ -295,10 +295,11 @@ class test : RegisteredFunctor
 
 		auto sum = a + b;
 		//auto sum2 = sum; // illegal copy operation (error C2280)
-		//auto sum3 = std::move(sum); // illegal move operation (error C2338) : static_assert "Should never leave a possibly dirty operator. Please use leave()."
+		//auto sum3 = std::move(sum); // illegal move operation (error C2338) : static_assert "Should never return a possibly dirty operator. Please use leave()."
 		auto sum4 = sum + c;
-		auto sum5 = a + b + c; // equivalent to all operations up there
-		//return sum4; // illegal move operation : This may generate weird compiler error if trying to used return type. However, this really triggers error C2338 above
+		auto sum5 = a + b + c; // equivalent to all operations up there (hacked to compile as compiler will evaluate it as (a+b)+c and I didnt implement a+(b+c) here...)
+		//return sum4; // illegal move operation : This may generate weird compiler error if trying to use return type.
+		               // However, it really triggers error C2338 as above even if compiler may go mad so it won't ever compile...
 
 		return sum4.leave(); // yay! "partially" evaluates expression (currently fully evaluates it for now)...
 	}
@@ -308,7 +309,7 @@ class test : RegisteredFunctor
 	{
 		auto sum = internal();
 		auto eval_sum = sum();
-		static_assert(std::is_same_v<decltype(eval_sum), field_type>, "Wrong return type from operation..." );
+		static_assert(std::is_same_v<decltype(eval_sum), field_type>, "Wrong return type from operation..." ); // This helps trapping the possible illegal move operation
 		std::cout << "Result : " << eval_sum;
 	}
 	static test instance;
