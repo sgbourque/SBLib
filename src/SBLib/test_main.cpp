@@ -9,6 +9,11 @@ RegisteredFunctor::data_t RegisteredFunctor::common_data;
 
 #define USING_NAIVE_IMPLEMENTATION 0
 
+
+//
+// invoke_operator : essentially convert a tuple into a parameter pack expension
+// (could be made more generic to act on containers others than tuple as an array or the like)
+//
 template<typename operator_type>
 struct invoke_operator
 {
@@ -44,41 +49,16 @@ public:
 };
 
 
+//
+// operator_traits : defines how to operates on operands
+//
 template<typename operator_type, typename... operand_type>
 struct operator_traits;
 
+
 //
-// identity_operator : defers evaluation of operands
+// operator_node for operator tree construction (need some template aliases to prevent having to ever use these tree_depth constant explicitely)
 //
-struct identity_operator
-{
-	template<typename... T>
-	static auto assign(T... args)
-	{
-		return operator_node<identity_operator, tree_depth_construct, T...>{std::forward<T>(args)...}.leave();
-	}
-
-	template<typename... T>
-	static auto evaluate(T... operands)
-	{
-		using traits = operator_traits<identity_operator, T...>;
-		return traits::evaluate(std::forward<T>(operands)...);
-	}
-
-	static constexpr char* name() { return "identity"; }
-};
-template<typename T>
-struct operator_traits<identity_operator, T>
-{
-	using result_type = T;
-	static auto evaluate(T t)
-	{
-		return t;
-	}
-};
-
-
-
 using tree_depth_evaluated = std::integral_constant<long long, -1>;
 using tree_depth_root      = std::integral_constant<long long, 0>;
 using tree_depth_construct = std::integral_constant<long long, 1>;
@@ -141,6 +121,38 @@ private:
 	operator_node& operator =(operator_node&&) = default;
 };
 
+
+//
+// identity_operator : defers evaluation of operands
+//
+struct identity_operator
+{
+	template<typename... T>
+	static auto assign(T... args)
+	{
+		return operator_node<identity_operator, tree_depth_construct, T...>{std::forward<T>(args)...}.leave();
+	}
+
+	template<typename... T>
+	static auto evaluate(T... operands)
+	{
+		using traits = operator_traits<identity_operator, T...>;
+		return traits::evaluate(std::forward<T>(operands)...);
+	}
+
+	static constexpr char* name() { return "identity"; }
+};
+template<typename T>
+struct operator_traits<identity_operator, T>
+{
+	using result_type = T;
+	static auto evaluate(T t)
+	{
+		return t;
+	}
+};
+
+
 //
 // sum_operator :
 // - need to implement user-called interface (usually operator +) tbat will call assign on supported types
@@ -171,7 +183,7 @@ struct sum_operator
 ////////////////////////////////////////////////////////////////////
 //
 // Lets do some testing with some demo case...
-// Demo : sum on finite fields of integer mod p
+// Demo : sum on finite fields of integers mod p
 //
 template<size_t prime_number>
 struct my_finite_field_p
