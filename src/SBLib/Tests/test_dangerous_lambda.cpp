@@ -1,5 +1,9 @@
 #include <test_common.h>
 using namespace SBLib::Test;
+#ifdef USE_CURRENT_TEST
+#undef USE_CURRENT_TEST
+#endif
+#define USE_CURRENT_TEST 0
 
 template<typename functor_type>
 struct invoke_helper
@@ -168,7 +172,7 @@ auto invoke(std::tuple<arg_types...>&& arguments)
 	return invoke_helper<functor_type>::call(std::forward<decltype(arguments)>(arguments));
 }
 
-class test_WIP : RegisteredFunctor
+class test_dangerous_lambda : RegisteredFunctor
 {
 	template<template<typename...> typename base_traits, typename... arg_types>
 	struct operator_traits
@@ -320,12 +324,14 @@ class test_WIP : RegisteredFunctor
 		return do_sum;//;std::move(do_sum);
 	}
 
-	test_WIP() : RegisteredFunctor(__FUNCTION__, fct) {}
+	test_dangerous_lambda() : RegisteredFunctor(__FUNCTION__, fct) {}
 	static void fct()
 	{
 		auto do_sum = dangerous();
 		std::cout << do_sum() << std::endl;
 	}
-	static test instance;
+	static test_dangerous_lambda instance;
 };
-test_WIP test_WIP::instance;
+#if USE_CURRENT_TEST
+test_dangerous_lambda test_dangerous_lambda::instance;
+#endif // #if USE_CURRENT_TEST

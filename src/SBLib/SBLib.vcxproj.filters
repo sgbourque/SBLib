@@ -22,28 +22,34 @@
     <Filter Include="Header Files\Algorithms">
       <UniqueIdentifier>{cb31afdc-61b9-4d9a-a689-2cd44ea967dd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\test cases">
+      <UniqueIdentifier>{563f730a-0660-424c-bc63-9f20b93a37ef}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="test_combinations.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="test_multivector.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="test_multivector_space.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="test_clifford_algebra.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="test_vector.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="test_main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="test_WIP.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Tests\test_clifford_algebra.cpp">
+      <Filter>Source Files\test cases</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\test_combinations.cpp">
+      <Filter>Source Files\test cases</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\test_dangerous_lambda.cpp">
+      <Filter>Source Files\test cases</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\test_lambda_plus_plus.cpp">
+      <Filter>Source Files\test cases</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\test_multivector.cpp">
+      <Filter>Source Files\test cases</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\test_multivector_space.cpp">
+      <Filter>Source Files\test cases</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\test_vector.cpp">
+      <Filter>Source Files\test cases</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

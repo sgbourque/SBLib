@@ -33,6 +33,7 @@ class RegisteredFunctor
 public:
 	static bool eval(size_t id)
 	{
+		data_t& common_data = GetCommonData();
 		const bool found = (id < common_data.functionList.size());
 		if (found)
 		{
@@ -43,10 +44,12 @@ public:
 	}
 	static size_t size()
 	{
+		data_t& common_data = GetCommonData();
 		return common_data.functionMap.size();
 	}
 	static void help(std::ostream& out)
 	{
+		data_t& common_data = GetCommonData();
 		for (size_t id = 0; id < common_data.functionMap.size(); ++id)
 		{
 			const auto& fctName = common_data.functionList[id];
@@ -55,12 +58,16 @@ public:
 	}
 	static std::string get_name(size_t id)
 	{
+		data_t& common_data = GetCommonData();
 		return id < size() ? common_data.functionList[id] : "";
 	}
+
+
 protected:
 	using fct_type = void();
 	RegisteredFunctor(std::string name, fct_type fct)
 	{
+		data_t& common_data = GetCommonData();
 		auto class_name_contructor_name_begin = name.find_last_of(':');
 		if (class_name_contructor_name_begin != std::string::npos)
 		{
@@ -76,12 +83,14 @@ protected:
 	}
 	const size_t get_id()
 	{
+		data_t& common_data = GetCommonData();
 		return std::distance(common_data.functionList.begin(), std::find(common_data.functionList.begin(), common_data.functionList.end(), get_name()));
 	}
 
 private:
 	void sort()
 	{
+		data_t& common_data = GetCommonData();
 		std::sort(common_data.functionList.begin(), common_data.functionList.end());
 	}
 	std::string functionName;
@@ -94,9 +103,12 @@ private:
 		using  functionList_t = std::vector<std::string>;
 		functionList_t functionList;
 	};
-	static data_t common_data;
+	static data_t& GetCommonData()
+	{
+		static data_t common_data;
+		return common_data;
+	}
 };
-
 
 //
 // common multivector i/o
