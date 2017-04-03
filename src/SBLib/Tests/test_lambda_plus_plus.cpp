@@ -442,6 +442,7 @@ class test_lambda_plus_plus : RegisteredFunctor
 		//return sum4; // illegal move operation : This may generate weird compiler error if trying to use return type.
 		               // However, it really triggers error C2338 as above even if compiler may go mad so it won't ever compile...
 
+		std::cout << "(evaluating current value of operator)" << std::endl;
 		field_type result = sum5; // equivalent to : auto result = sum5();
 		std::cout << std::endl << "Give new value for these 3 int: ";
 		if (byref_traits_v)

@@ -77,5 +77,8 @@
     <ClInclude Include="test_common.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Algorithms\counter.h">
+      <Filter>Header Files\Algorithms</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
