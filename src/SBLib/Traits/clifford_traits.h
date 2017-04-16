@@ -49,7 +49,7 @@ namespace SBLib::Traits::Mathematics
 		{
 			second_grade             = second_traits::population_count,
 			second_permute_bit_index = (big_endian ? 0 : second_grade - 1),
-			second_permute_bit       = second_traits::get_bit<second_permute_bit_index>(),
+			second_permute_bit       = second_traits::template get_bit<second_permute_bit_index>(),
 
 			low_bit_mask                  = (second_permute_bit << 1) - 1,
 			high_bit_mask                 = ~low_bit_mask,

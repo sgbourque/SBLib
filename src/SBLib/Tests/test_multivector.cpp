@@ -4,7 +4,11 @@
 #include <fstream>
 
 #include <intrin.h> // for SSE / AVX
+
+#define USE_DIRECTX_MATH _MSC_EXTENSIONS
+#if USE_DIRECTX_MATH
 #include <DirectXMath.h>
+#endif
 
 #ifdef USE_CURRENT_TEST
 #undef USE_CURRENT_TEST
@@ -38,7 +42,7 @@ private:
 
 	public:
 		template<typename scalar_t, size_t space_mask0, size_t space_mask2, size_t rank_size0, size_t rank_size2>
-		wedge_product_internal(multivector_t<scalar_t, space_mask0, rank_size0>& result, const scalar_t& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+		wedge_product_internal(graded_multivector_t<scalar_t, space_mask0, rank_size0>& result, const scalar_t& u, const graded_multivector_t<scalar_t, space_mask2, rank_size2>& v)
 		{
 			using traits = SBLib::alternating_traits<subspace_mask, subspace_mask2>;
 			using ref_type = decltype( result.get<(subspace_mask ^ subspace_mask2)>() );
@@ -48,7 +52,7 @@ private:
 
 public:
 	template<typename scalar_t, size_t space_mask0, size_t space_mask1, size_t space_mask2, size_t rank_size0, size_t rank_size1, size_t rank_size2>
-	wedge_product_helper(multivector_t<scalar_t, space_mask0, rank_size0>& result, const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+	wedge_product_helper(graded_multivector_t<scalar_t, space_mask0, rank_size0>& result, const graded_multivector_t<scalar_t, space_mask1, rank_size1>& u, const graded_multivector_t<scalar_t, space_mask2, rank_size2>& v)
 	{
 		SBLib::for_each_combination< SBLib::select_combinations<space_mask2, rank_size2> >::iterate<wedge_product_internal>(result, u.get<subspace_mask>(), v);
 	}
@@ -57,9 +61,9 @@ public:
 // Generic version
 //
 template<typename scalar_t, size_t space_mask1, size_t space_mask2, size_t rank_size1, size_t rank_size2>
-auto wedge_product(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+auto wedge_product(const graded_multivector_t<scalar_t, space_mask1, rank_size1>& u, const graded_multivector_t<scalar_t, space_mask2, rank_size2>& v)
 {
-	using multivec_t = multivector_t<scalar_t, (space_mask1 | space_mask2), (rank_size1 + rank_size2)>;
+	using multivec_t = graded_multivector_t<scalar_t, (space_mask1 | space_mask2), (rank_size1 + rank_size2)>;
 	multivec_t result;
 	SBLib::for_each_combination< SBLib::select_combinations<space_mask1, rank_size1> >::iterate<wedge_product_helper>(result, u, v);
 	return std::move(result);
@@ -74,10 +78,10 @@ auto wedge_product(const multivector_t<scalar_t, space_mask1, rank_size1>& u, co
 // Also, hodge isn't even defined yet so using it here is ackward...
 //
 template<size_t space_mask>
-auto wedge_product(const vector_t<float, space_mask>& u, const multivector_t<float, space_mask, vector_t<float, space_mask>::dimension_size - 1>& v)
+auto wedge_product(const vector_t<float, space_mask>& u, const graded_multivector_t<float, space_mask, vector_t<float, space_mask>::dimension_size - 1>& v)
 {
 	static_assert(vector_t<float, space_mask>::dimension_size == 3, "These hacks are only working in 3 dimensions.");
-	using multivec_t = multivector_t<float, space_mask, vector_t<float, space_mask>::dimension_size>;
+	using multivec_t = graded_multivector_t<float, space_mask, vector_t<float, space_mask>::dimension_size>;
 	multivec_t result(multivec_t::UNINITIALIZED);
 	result.components.container[0] = DirectX::XMVector3Dot(u.components.container[0], (*v).components.container[0]);
 	for (size_t batch = 1; batch != u.components.container.size(); ++batch)
@@ -91,14 +95,14 @@ template<size_t space_mask>
 auto wedge_product(const vector_t<float, space_mask>& u, const vector_t<float, space_mask>& v)
 {
 	static_assert(vector_t<float, space_mask>::dimension_size == 3, "These hacks are only working in 3 dimensions.");
-	using multivec_t = multivector_t<float, space_mask, 1>;
+	using multivec_t = graded_multivector_t<float, space_mask, 1>;
 	multivec_t result(multivec_t::UNINITIALIZED);
 	result.components.container[0] = DirectX::XMVector3Cross(u.components.container[0], v.components.container[0]);
 	return std::move(*result);
 }
 #endif // #if USE_DIRECTX_VECTOR
 template<typename scalar_t, size_t space_mask1, size_t space_mask2, size_t rank_size1, size_t rank_size2>
-auto operator ^(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+auto operator ^(const graded_multivector_t<scalar_t, space_mask1, rank_size1>& u, const graded_multivector_t<scalar_t, space_mask2, rank_size2>& v)
 {
 	return std::move(wedge_product(u, v));
 }
@@ -127,7 +131,7 @@ private:
 
 public:
 	template<typename scalar_t, size_t space_mask0, size_t space_mask1, size_t rank_size0, size_t rank_size1>
-	hodge_conjugate_helper(multivector_t<scalar_t, space_mask0, rank_size0>& result, const multivector_t<scalar_t, space_mask1, rank_size1>& u)
+	hodge_conjugate_helper(graded_multivector_t<scalar_t, space_mask0, rank_size0>& result, const graded_multivector_t<scalar_t, space_mask1, rank_size1>& u)
 	{
 		using traits = SBLib::hodge_conjugacy_traits<subspace_mask, space_mask0>;
 		using ref_type = decltype(result.get<traits::bit_set>());
@@ -140,9 +144,9 @@ public:
 // Generic version
 //
 template<typename scalar_t, size_t space_mask, size_t rank_size>
-auto hodge_conjugate(const multivector_t<scalar_t, space_mask, rank_size>& u)
+auto hodge_conjugate(const graded_multivector_t<scalar_t, space_mask, rank_size>& u)
 {
-	using multivec_t = multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size - rank_size>;
+	using multivec_t = graded_multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size - rank_size>;
 	multivec_t result(multivec_t::UNINITIALIZED);
 	SBLib::for_each_combination< SBLib::select_combinations<space_mask, rank_size> >::iterate<hodge_conjugate_helper>(result, u);
 	return std::move(result);
@@ -156,29 +160,29 @@ auto hodge_conjugate(const multivector_t<scalar_t, space_mask, rank_size>& u)
 //
 static const __m128i maskNeg2 = DirectX::XMVECTORU32{ 0x00000000u, 0x80000000u, 0x00000000u, 0x00000000u };
 template<size_t space_mask, size_t rank_size>
-auto hodge_conjugate(const multivector_t<float, space_mask, rank_size>& u)
+auto hodge_conjugate(const graded_multivector_t<float, space_mask, rank_size>& u)
 {
 	static_assert(vector_t<float, space_mask>::dimension_size == 3, "These hacks are only working in 3 dimensions.");
-	using multivec_t = multivector_t<float, space_mask, SBLib::bit_traits<space_mask>::population_count - rank_size>;
+	using multivec_t = graded_multivector_t<float, space_mask, SBLib::bit_count(space_mask) - rank_size>;
 	multivec_t result(multivec_t::UNINITIALIZED);
 	result.components.container[0] = _mm_castsi128_ps(_mm_xor_si128(_mm_castps_si128(u.components.container[0]), maskNeg2));
 	return std::move(result);
 }
 #endif // USE_DIRECTX_VECTOR
 template<typename scalar_t, size_t space_mask, size_t rank_size>
-auto operator *(const multivector_t<scalar_t, space_mask, rank_size>& u)
+auto operator *(const graded_multivector_t<scalar_t, space_mask, rank_size>& u)
 {
 	return std::move(hodge_conjugate(u));
 }
 
 
 template<typename scalar_t, size_t space_mask1, size_t space_mask2, size_t rank_size1, size_t rank_size2>
-auto CrossProduct(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+auto CrossProduct(const graded_multivector_t<scalar_t, space_mask1, rank_size1>& u, const graded_multivector_t<scalar_t, space_mask2, rank_size2>& v)
 {
 	return std::move( *(u ^ v) );
 }
 template<typename scalar_t, size_t space_mask1, size_t space_mask2, size_t rank_size1, size_t rank_size2>
-auto InnerProduct(const multivector_t<scalar_t, space_mask1, rank_size1>& u, const multivector_t<scalar_t, space_mask2, rank_size2>& v)
+auto InnerProduct(const graded_multivector_t<scalar_t, space_mask1, rank_size1>& u, const graded_multivector_t<scalar_t, space_mask2, rank_size2>& v)
 {
 	return std::move( *(u ^ *v) );
 }
@@ -201,9 +205,9 @@ class test_multivector : public RegisteredFunctor
 		e12 = (1 << 12), e13 = (1 << 13),
 		e14 = (1 << 14), e15 = (1 << 15),
 	};
-	using multivector_type1 = multivector_t<float, e0 | e1 | e2, 1>;
-	using multivector_type2 = multivector_t<float, e0 | e1 | e2, 2>;
-	using multivector_type3 = multivector_t<float, e0 | e1 | e2, 3>;
+	using multivector_type1 = graded_multivector_t<float, e0 | e1 | e2, 1>;
+	using multivector_type2 = graded_multivector_t<float, e0 | e1 | e2, 2>;
+	using multivector_type3 = graded_multivector_t<float, e0 | e1 | e2, 3>;
 
 	test_multivector() : RegisteredFunctor(__FUNCTION__, fct) {}
 	static void fct()
@@ -270,7 +274,7 @@ class test_multivector : public RegisteredFunctor
 #if USE_DIRECTX_VECTOR
 		DirectX::XMVECTOR test1v{ test1.components.container[0] };
 		DirectX::XMVECTOR test2v{ test2.components.container[0] };
-#else // #if USE_DIRECTX_VECTOR
+#elif USE_DIRECTX_MATH // #if USE_DIRECTX_VECTOR
 		DirectX::XMVECTOR test1v{ test1.components.container[0], test1.components.container[1], test1.components.container[2] };
 		DirectX::XMVECTOR test2v{ test2.components.container[0], test2.components.container[1], test2.components.container[2] };
 #endif // #if USE_DIRECTX_VECTOR
@@ -281,16 +285,20 @@ class test_multivector : public RegisteredFunctor
 		auto test5 = CrossProduct(test1, test2);
 		std::cout << test1 << " x " << test2 << " = " << test5 << std::endl;
 
+#if USE_DIRECTX_MATH
 		DirectX::XMVECTORF32 test5v;
 		test5v.v = DirectX::XMVector3Cross(test1v, test2v);
 		std::cout << test1 << " x " << test2 << " = " << test5v.f[0] << ", " << test5v.f[1] << ", " << test5v.f[2] << std::endl;
+#endif
 
 		auto test6 = InnerProduct(test1, test2);
 		std::cout << test1 << " . " << test2 << " = " << test6 << std::endl;
 
+#if USE_DIRECTX_MATH
 		DirectX::XMVECTORF32 test6v;
 		test6v.v = DirectX::XMVector3Dot(test1v, test2v);
 		std::cout << test1 << " . " << test2 << " = " << test6v.f[0] << std::endl;
+#endif
 
 		auto test7 = (test1 ^ test2 ^ test3);
 		std::cout << "Det{" << test1 << test2 << test3 << "} = " << *test7 << std::endl;

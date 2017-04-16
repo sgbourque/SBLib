@@ -24,8 +24,8 @@ struct static_for_each
 	template<template<size_t, size_t> typename fct_type, typename... type_t>
 	static void iterate(type_t&&... types)
 	{
-		fct_type<get_helper::get<begin>(), begin>(types...);
-		static_for_each<increment_helper::increment<begin>(), end, get_helper, increment_helper>::iterate<fct_type>(types...);
+		fct_type<get_helper::template get<begin>(), begin>(std::forward<type_t>(types)...);
+		static_for_each<increment_helper::template increment<begin>(), end, get_helper, increment_helper>::template iterate<fct_type>(types...);
 	}
 };
 template<size_t end, class get_helper, class increment_helper>

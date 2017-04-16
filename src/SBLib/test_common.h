@@ -1,7 +1,7 @@
 #pragma once
 #define USE_DIRECTX_VECTOR 0
 
-#include <Mathematics/multivector.h>
+#include <Mathematics/multivector.h>	
 
 #include <functional>
 #include <iostream>
@@ -14,7 +14,7 @@ namespace SBLib::Test
 {
 
 template<typename scalar_t, size_t space_mask, size_t rank>
-using multivector_t = SBLib::multivector_t<scalar_t, space_mask, rank>;
+using graded_multivector_t = SBLib::graded_multivector_t<scalar_t, space_mask, rank>;
 template<typename scalar_t, size_t space_mask>
 using vector_t = SBLib::vector_t<scalar_t, space_mask>;
 
@@ -121,21 +121,21 @@ template<typename type_t>
 struct algebraic_t;
 
 template<typename field_t, size_t mask, size_t rank>
-struct latex_t<multivector_t<field_t, mask, rank>>
+struct latex_t<graded_multivector_t<field_t, mask, rank>>
 {
 	static constexpr const char* prefix() { return "\\left("; }
 	static constexpr const char* delimiter() { return ",\\,"; }
 	static constexpr const char* postfix() { return "\\right)"; }
 };
 template<typename field_t, size_t mask, size_t rank>
-struct raw_t<multivector_t<field_t, mask, rank>>
+struct raw_t<graded_multivector_t<field_t, mask, rank>>
 {
 	static constexpr const char* prefix() { return "{"; }
 	static constexpr const char* delimiter() { return ", "; }
 	static constexpr const char* postfix() { return "}"; }
 };
 template<typename field_t, size_t mask, size_t rank>
-struct algebraic_t<multivector_t<field_t, mask, rank>>
+struct algebraic_t<graded_multivector_t<field_t, mask, rank>>
 {
 	static constexpr const char* prefix() { return "("; }
 	static constexpr const char* delimiter() { return " + "; }
@@ -168,7 +168,7 @@ public:
 			{
 				do_action(std::ostream& out)
 				{
-					enum { first_bit = SBLib::bit_traits<bit_mask>::get_bit<0>(), };
+					enum { first_bit = SBLib::bit_traits<bit_mask>::template get_bit<0>(), };
 					const std::string delimiter = (loop == first_bit) ? "" : outer_basis_traits::delimiter();
 					out << delimiter << outer_basis_traits::symbol() << outer_basis_traits::accessor_prefix() << bit_index << outer_basis_traits::accessor_postfix();
 				}
@@ -177,31 +177,31 @@ public:
 
 	public:
 		template<typename scalar_t, size_t space_mask, size_t rank_size>
-		do_action(std::ostream& out, const multivector_t<scalar_t, space_mask, rank_size>& V)
+		do_action(std::ostream& out, const graded_multivector_t<scalar_t, space_mask, rank_size>& V)
 		{
-			using type_t = multivector_t<scalar_t, space_mask, rank_size>;
+			using type_t = graded_multivector_t<scalar_t, space_mask, rank_size>;
 			using output_traits_t = output_traits<type_t>;
 			const std::string delimiter = (loop == 0) ? "" : output_traits_t::delimiter();
 			const std::string prefix    = (SBLib::bit_traits<bit_mask>::population_count <= 1) ? " " : output_traits_t::prefix();
 			const std::string postfix   = (SBLib::bit_traits<bit_mask>::population_count <= 1) ? "" : output_traits_t::postfix();
-			out << delimiter << V.get<bit_mask>() << prefix;
+			out << delimiter << V.template get<bit_mask>() << prefix;
 			SBLib::for_each_bit_index<bit_mask>::iterate<output_basis<outer_basis_traits<output_traits_t>>::do_action>(out);
 			out << postfix;
 		}
 
 		template<typename scalar_t, size_t space_mask>
-		do_action(std::ostream& out, const multivector_t<scalar_t, space_mask, 0>& V)
+		do_action(std::ostream& out, const graded_multivector_t<scalar_t, space_mask, 0>& V)
 		{
-			out << V.get<bit_mask>();
+			out << V.template get<bit_mask>();
 		}
 	};
 };
 #endif // #if USING_STATIC_FOR_EACH_OUTPUT
 
 template<template<typename> class output_traits, typename field_type, size_t space_mask, size_t rank_size>
-inline std::string to_string(const multivector_t<field_type, space_mask, rank_size>& V)
+inline std::string to_string(const graded_multivector_t<field_type, space_mask, rank_size>& V)
 {
-	using type_t = multivector_t<field_type, space_mask, rank_size>;
+	using type_t = graded_multivector_t<field_type, space_mask, rank_size>;
 	using output_traits_t = output_traits<type_t>;
 
 	std::stringstream ss;
@@ -219,7 +219,7 @@ inline std::string to_string(const multivector_t<field_type, space_mask, rank_si
 #endif // #if USING_STATIC_FOR_EACH_OUTPUT
 
 	ss << output_traits_t::postfix();
-	return std::move( ss.str() );
+	return ss.str();
 }
 
 #if USING_STATIC_FOR_EACH_OUTPUT
@@ -229,13 +229,13 @@ template<typename type_t> using out_t = raw_t<type_t>;
 #endif // #if USING_STATIC_FOR_EACH_OUTPUT
 
 template<typename field_type, size_t space_mask, size_t rank_size>
-inline std::ostream& operator <<(std::ostream& out, const multivector_t<field_type, space_mask, rank_size>& V)
+inline std::ostream& operator <<(std::ostream& out, const graded_multivector_t<field_type, space_mask, rank_size>& V)
 {
 	return out << to_string<out_t>(V);
 }
 
 template<typename field_type, size_t space_mask, size_t rank_size>
-inline std::istream& operator >>(std::istream& in, multivector_t<field_type, space_mask, rank_size>& V)
+inline std::istream& operator >>(std::istream& in, graded_multivector_t<field_type, space_mask, rank_size>& V)
 {
 	for (size_t index = 0; index < V.dimension_size; ++index)
 		in >> V.components[index];

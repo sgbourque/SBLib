@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <Algorithms/static_for_each.h>
 namespace SBLib::Containers::Mathematics
 {
 //
@@ -32,6 +33,11 @@ private:
 template<typename scalar_t, size_t dimension>
 struct canonical_components_t : canonical_components_helper<canonical_components_t, scalar_t, dimension>
 {
+	using components_type = canonical_components_helper<SBLib::Containers::Mathematics::canonical_components_t, scalar_t, dimension>;
+	using container_type = typename components_type::container_type;
+	using raw_type = typename components_type::raw_type;
+	using scalar_type = typename components_type::scalar_type;
+
 	enum eUNINITIALIZED : bool { UNINITIALIZED = true, };
 	canonical_components_t(eUNINITIALIZED) {};
 
@@ -41,7 +47,7 @@ struct canonical_components_t : canonical_components_helper<canonical_components
 
 	explicit canonical_components_t(const container_type& v) : container(v) {};
 	explicit canonical_components_t(const raw_type& v) { container.v = v; };
-	template<typename... scalars> explicit canonical_components_t(scalar_type&& first, scalars&&... coords) : container{ first, std::forward<scalars>(coords)... } { static_assert(sizeof...(scalars) < dimension_size, "Too many initializers."); }
+	template<typename... scalars> explicit canonical_components_t(scalar_type&& first, scalars&&... coords) : container{ first, std::forward<scalars>(coords)... } { static_assert(sizeof...(scalars) < components_type::dimension_size, "Too many initializers."); }
 
 	canonical_components_t(container_type&& v) : container(v) {}
 	canonical_components_t(raw_type&& v) { container.v = std::move(v); }
@@ -101,7 +107,7 @@ template<typename scalar_t, size_t dimension>
 inline auto& operator *=(canonical_components_t<scalar_t, dimension>& u, const scalar_t& scale)
 {
 	using compoments_t = canonical_components_t<scalar_t, dimension>;
-	static_for_each<0, compoments_t::parallel_count>::iterate<multiply_component_helper>(u, u, scale);
+	static_for_each<0, compoments_t::parallel_count>::template iterate<multiply_component_helper>(u, u, scale);
 	return u;
 }
 template<typename scalar_t, size_t dimension>
@@ -109,7 +115,7 @@ inline auto operator *(const canonical_components_t<scalar_t, dimension>& u, con
 {
 	using compoments_t = canonical_components_t<scalar_t, dimension>;
 	compoments_t result(compoments_t::UNINITIALIZED);
-	static_for_each<0, compoments_t::parallel_count>::iterate<multiply_component_helper>(result, u, scale);
+	static_for_each<0, compoments_t::parallel_count>::template iterate<multiply_component_helper>(result, u, scale);
 	return std::move(result);
 }
 template<typename scalar_t, size_t dimension>
@@ -122,16 +128,16 @@ inline const auto& operator /=(canonical_components_t<scalar_t, dimension>& u, c
 {
 	const scalar_t inverse_scale = scalar_t(1) / scale;
 	using compoments_t = canonical_components_t<scalar_t, dimension>;
-	static_for_each<0, compoments_t::parallel_count>::iterate<multiply_component_helper>(u, u, inverse_scale);
+	static_for_each<0, compoments_t::parallel_count>::template iterate<multiply_component_helper>(u, u, inverse_scale);
 	return u;
 }
 template<typename scalar_t, size_t dimension>
-inline auto operator /(const canonical_components_t<scalar_t, dimension>& v, const scalar_t& scale)
+inline auto operator /(const canonical_components_t<scalar_t, dimension>& u, const scalar_t& scale)
 {
 	const scalar_t inverse_scale = scalar_t(1) / scale;
 	using compoments_t = canonical_components_t<scalar_t, dimension>;
 	compoments_t result(compoments_t::UNINITIALIZED);
-	static_for_each<0, compoments_t::parallel_count>::iterate<multiply_component_helper>(result, u, inverse_scale);
+	static_for_each<0, compoments_t::parallel_count>::template iterate<multiply_component_helper>(result, u, inverse_scale);
 	return std::move(result);
 }
 
@@ -139,7 +145,7 @@ template<typename scalar_t, size_t dimension>
 inline const auto& operator +=(canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
 {
 	using compoments_t = canonical_components_t<scalar_t, dimension>;
-	static_for_each<0, compoments_t::parallel_count>::iterate<add_component_helper>(u, u, v);
+	static_for_each<0, compoments_t::parallel_count>::template iterate<add_component_helper>(u, u, v);
 	return u;
 }
 template<typename scalar_t, size_t dimension>
@@ -147,14 +153,14 @@ inline auto operator +(const canonical_components_t<scalar_t, dimension>& u, con
 {
 	using compoments_t = canonical_components_t<scalar_t, dimension>;
 	compoments_t result(compoments_t::UNINITIALIZED);
-	static_for_each<0, compoments_t::parallel_count>::iterate<add_component_helper>(result, u, v);
+	static_for_each<0, compoments_t::parallel_count>::template iterate<add_component_helper>(result, u, v);
 	return std::move(result);
 }
 template<typename scalar_t, size_t dimension>
 inline const auto& operator -=(canonical_components_t<scalar_t, dimension>& u, const canonical_components_t<scalar_t, dimension>& v)
 {
 	using compoments_t = canonical_components_t<scalar_t, dimension>;
-	static_for_each<0, compoments_t::parallel_count>::iterate<sub_component_helper>(u, u, v);
+	static_for_each<0, compoments_t::parallel_count>::template iterate<sub_component_helper>(u, u, v);
 	return u;
 }
 template<typename scalar_t, size_t dimension>
@@ -162,7 +168,7 @@ inline auto operator -(const canonical_components_t<scalar_t, dimension>& u, con
 {
 	using compoments_t = canonical_components_t<scalar_t, dimension>;
 	compoments_t result(compoments_t::UNINITIALIZED);
-	static_for_each<0, compoments_t::parallel_count>::iterate<sub_component_helper>(result, u, v);
+	static_for_each<0, compoments_t::parallel_count>::template iterate<sub_component_helper>(result, u, v);
 	return std::move(result);
 }
 } // namespace SBLib::Containers::Mathematics

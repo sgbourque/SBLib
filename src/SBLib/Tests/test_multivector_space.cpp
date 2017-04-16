@@ -32,16 +32,16 @@ class test_multivector_space : public RegisteredFunctor
 	//
 	template<typename module_type, size_t rank_size>
 	struct uniform_multimodule_t
-		: module_t<typename module_type::field_t,
-				   SBLib::binomial_coefficient<module_type::dimension, rank_size>::value>
+		: module_t<typename module_type::field_t, SBLib::binomial_coefficient<module_type::dimension, rank_size>::value>
 	{
+		using super = module_t<typename module_type::field_t, SBLib::binomial_coefficient<module_type::dimension, rank_size>::value>;
 		enum { rank = rank_size };
 
 		uniform_multimodule_t()
 			: module_t()
 		{}
-		uniform_multimodule_t(std::array<field_t, dimension>&& coords)
-			: module_t(std::move(coords))
+		uniform_multimodule_t(std::array<typename module_type::field_t, super::dimension>&& coords)
+			: super(std::move(coords))
 		{}
 	};
 	template<typename module_type>

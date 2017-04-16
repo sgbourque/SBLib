@@ -51,6 +51,12 @@
     <ClCompile Include="Tests\test_vector.cpp">
       <Filter>Source Files\test cases</Filter>
     </ClCompile>
+    <ClCompile Include="Tests\test_clifford_table_WIP.cpp">
+      <Filter>Source Files\test cases</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\test_optimize_WIP.cpp">
+      <Filter>Source Files\test cases</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Mathematics\binomial_coefficient.h">

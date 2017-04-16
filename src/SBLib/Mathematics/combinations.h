@@ -48,11 +48,11 @@ struct combinations
 			static_assert(index < count, "Invalid combination");
 			enum : size_t
 			{
-				last_bit                 = bit_traits<space_mask>::get_bit<dimension_size - 1>(),
+				last_bit                 = bit_traits<space_mask>::template get_bit<dimension_size - 1>(),
 				inherited_space_mask     = space_mask & ~last_bit,
 				inherited_rank_size      = (rank_size < dimension_size) ? rank_size : 0,
-				inherited_count          = combinations<inherited_space_mask>::select<inherited_rank_size>::count,
-				constructed_count        = combinations<inherited_space_mask>::select<rank_size - 1>::count,
+				inherited_count          = combinations<inherited_space_mask>::template select<inherited_rank_size>::count,
+				constructed_count        = combinations<inherited_space_mask>::template select<rank_size - 1>::count,
 			};
 			enum : bool
 			{
@@ -71,14 +71,14 @@ struct combinations
 			{
 				conjugate_rank_size  = use_conjugate ? dimension_size - rank_size : 0,
 				conjugate_index      = is_high_rank  ? index : use_conjugate ? count - index - 1 : 0,
-				value_from_conjugate = space_mask & ~select<conjugate_rank_size>::get<conjugate_index>(),
+				value_from_conjugate = space_mask & ~select<conjugate_rank_size>::template get<conjugate_index>(),
 
 				inherited_conjugate  = is_inherited_index ? index : 0,
 				inherited_index      = is_inherited_index ? is_inherited_conjugate ? inherited_count - index - 1 : index : 0,
-				inherited_value      = combinations<inherited_space_mask>::select<inherited_rank_size>::get<inherited_index>(),
+				inherited_value      = combinations<inherited_space_mask>::template select<inherited_rank_size>::template get<inherited_index>(),
 
 				constructed_index    = is_constructed ? constructed_count - (count - index - 1) - 1 : 0,
-				constructed_value    = last_bit | combinations<inherited_space_mask>::select<rank - 1>::get<constructed_index>(),
+				constructed_value    = last_bit | combinations<inherited_space_mask>::template select<rank - 1>::template get<constructed_index>(),
 
 				value = use_conjugate ? value_from_conjugate :
 				        is_inherited_index ? inherited_value :
@@ -95,11 +95,11 @@ struct combinations
 			static_assert(bit_traits<subspace_mask>::population_count == rank_size, "Invalid combination");
 			enum : size_t
 			{
-				last_bit = bit_traits<space_mask>::get_bit<dimension_size - 1>(),
+				last_bit = bit_traits<space_mask>::template get_bit<dimension_size - 1>(),
 				inherited_space_mask = space_mask & ~last_bit,
 				inherited_rank_size  = (rank_size < dimension_size) ? rank_size : 0,
-				inherited_count      = combinations<inherited_space_mask>::select<inherited_rank_size>::count,
-				constructed_count    = combinations<inherited_space_mask>::select<rank_size - 1>::count,
+				inherited_count      = combinations<inherited_space_mask>::template select<inherited_rank_size>::count,
+				constructed_count    = combinations<inherited_space_mask>::template select<rank_size - 1>::count,
 			};
 			enum : bool
 			{
@@ -115,16 +115,16 @@ struct combinations
 			{
 				conjugate_rank_size  = use_conjugate ? dimension_size - rank_size : 0,
 				conjugate_mask       = use_conjugate ? space_mask & ~subspace_mask : 0,
-				value_from_conjugate = select<conjugate_rank_size>::get_components_index<conjugate_mask>(),
+				value_from_conjugate = select<conjugate_rank_size>::template get_components_index<conjugate_mask>(),
 
 				inherited_rank       = is_inherited_index ? inherited_rank_size : 0,
 				inherited_mask       = is_inherited_index ? subspace_mask : 0,
-				inherited_raw_value  = combinations<inherited_space_mask>::select<inherited_rank>::get_components_index<inherited_mask>(),
-				inherited_value      = is_inherited_conjugate ? combinations<inherited_space_mask>::select<inherited_rank>::count - inherited_raw_value - 1: inherited_raw_value,
+				inherited_raw_value  = combinations<inherited_space_mask>::template select<inherited_rank>::template get_components_index<inherited_mask>(),
+				inherited_value      = is_inherited_conjugate ? combinations<inherited_space_mask>::template select<inherited_rank>::count - inherited_raw_value - 1: inherited_raw_value,
 
 				constructed_rank     = is_constructed ? (rank - 1) : 0,
 				constructed_submask  = is_constructed ? (subspace_mask & ~last_bit) : 0,
-				constructed_value    = inherited_count + combinations<inherited_space_mask>::select<constructed_rank>::get_components_index<constructed_submask>(),
+				constructed_value    = inherited_count + combinations<inherited_space_mask>::template select<constructed_rank>::template get_components_index<constructed_submask>(),
 
 				value = use_conjugate ? value_from_conjugate :
 				        is_inherited_index ? inherited_value :
@@ -197,13 +197,14 @@ struct combinations
 };
 
 template<size_t space_mask, size_t rank_size, size_t index = 0>
-struct select_combinations : combinations<space_mask>::select<rank_size>
+struct select_combinations : combinations<space_mask>::template select<rank_size>
 {
+	using select_combinations_type = typename combinations<space_mask>::template select<rank_size>;
 	enum
 	{
-		value = get<index>(),
+		value = select_combinations_type::template get<index>(),
 	};
-	static_assert(get_components_index<value>() == index, "Incorrect calculated component index");
+	static_assert(select_combinations_type::template get_components_index<value>() == index, "Incorrect calculated component index");
 };
 
 template<class traits>
