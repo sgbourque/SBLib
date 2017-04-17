@@ -9,7 +9,7 @@ namespace SBLib::Mathematics
 // combinations
 //
 // By construction, duals are component-to-compoment using dual rank (or dual indices for self-dual ranks) and
-// is thus "Hodge-natural". Moreover, compoments are all-increasing in low and self-dual ranks while all-decreasing for high ranks
+// is thus "Hodge-natural". Moreover, components are all-increasing in low and self-dual ranks while all-decreasing for high ranks
 // (because of required conjugation duality).
 //
 // For instance, in dimension 3, vector order is (e0 e1 e2) and pseudo-vector order is (e1^e2 e0^e2 e0^e1).
@@ -28,7 +28,7 @@ struct combinations
 	enum : size_t
 	{
 		space_mask     = bit_mask,
-		dimension_size = bit_traits<space_mask>::population_count,
+		dimension_size = bit_count(space_mask),
 		count          = (1 << dimension_size),
 	};
 	template<size_t rank>
@@ -37,7 +37,7 @@ struct combinations
 		enum : size_t
 		{
 			space_mask     = bit_mask,
-			dimension_size = bit_traits<space_mask>::population_count,
+			dimension_size = bit_count(space_mask),
 			rank_size      = rank,
 			count          = binomial_coefficient<dimension_size, rank_size>::value,
 		};
@@ -48,7 +48,7 @@ struct combinations
 			static_assert(index < count, "Invalid combination");
 			enum : size_t
 			{
-				last_bit                 = bit_traits<space_mask>::template get_bit<dimension_size - 1>(),
+				last_bit                 = get_bit<dimension_size - 1>(space_mask),
 				inherited_space_mask     = space_mask & ~last_bit,
 				inherited_rank_size      = (rank_size < dimension_size) ? rank_size : 0,
 				inherited_count          = combinations<inherited_space_mask>::template select<inherited_rank_size>::count,
@@ -92,10 +92,10 @@ struct combinations
 		{
 			static_assert(rank <= dimension_size, "Invalid rank");
 			static_assert((subspace_mask & space_mask) == subspace_mask, "Invalid combination");
-			static_assert(bit_traits<subspace_mask>::population_count == rank_size, "Invalid combination");
+			static_assert(bit_count(subspace_mask) == rank_size, "Invalid combination");
 			enum : size_t
 			{
-				last_bit = bit_traits<space_mask>::template get_bit<dimension_size - 1>(),
+				last_bit = get_bit<dimension_size - 1>(space_mask),
 				inherited_space_mask = space_mask & ~last_bit,
 				inherited_rank_size  = (rank_size < dimension_size) ? rank_size : 0,
 				inherited_count      = combinations<inherited_space_mask>::template select<inherited_rank_size>::count,
@@ -140,7 +140,7 @@ struct combinations
 		enum : size_t
 		{
 			space_mask     = bit_mask,
-			dimension_size = bit_traits<space_mask>::population_count,
+			dimension_size = bit_count(space_mask),
 			rank_size      = 0,
 			count          = binomial_coefficient<dimension_size, rank_size>::value,
 		};
@@ -155,7 +155,7 @@ struct combinations
 		constexpr static size_t get_components_index()
 		{
 			static_assert(0 <= dimension_size, "Invalid rank");
-			static_assert(bit_traits<subspace_mask>::population_count == rank_size, "Invalid combination");
+			static_assert(bit_count(subspace_mask) == rank_size, "Invalid combination");
 			return 0;
 		}
 	};
@@ -165,7 +165,7 @@ struct combinations
 		enum : size_t
 		{
 			space_mask     = bit_mask,
-			dimension_size = bit_traits<space_mask>::population_count,
+			dimension_size = bit_count(space_mask),
 			rank_size      = 1,
 			count          = binomial_coefficient<dimension_size, rank_size>::value,
 		};
@@ -176,7 +176,7 @@ struct combinations
 			static_assert(index < count, "Invalid combination");
 			enum : size_t
 			{
-				value = bit_traits<space_mask>::get_bit<index>(),
+				value = get_bit<index>(space_mask),
 			};
 			return value;
 		}
@@ -184,13 +184,13 @@ struct combinations
 		constexpr static size_t get_components_index()
 		{
 			static_assert(0 <= dimension_size, "Invalid rank");
-			static_assert(bit_traits<subspace_mask>::population_count == rank_size, "Invalid combination");
+			static_assert(bit_count(subspace_mask) == rank_size, "Invalid combination");
 			enum : size_t
 			{
-				value = bit_traits<space_mask>::get_bit_component<subspace_mask>(),
+				value = get_bit_component<subspace_mask>(space_mask),
 			};
 			static_assert(value < count, "Invalid index");
-			static_assert(bit_traits<space_mask>::get_bit<value>() == subspace_mask, "Invalid index");
+			static_assert(get_bit<value>(space_mask) == subspace_mask, "Invalid index");
 			return value;
 		}
 	};
@@ -230,4 +230,4 @@ public:
 };
 template<typename combinations_traits_t> struct for_each_combination : static_for_each<0, combinations_traits_t::count, get_combination_helper<combinations_traits_t>, increment_index_helper> {};
 } // namespace SBLib::Mathematics
-namespace SBLib { using namespace Mathematics; }
+namespace SBLib { using namespace SBLib::Mathematics; }

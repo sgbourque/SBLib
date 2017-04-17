@@ -1,4 +1,7 @@
+#define USE_MULTIVECTOR 1
 #include <test_common.h>
+#include <Mathematics/binomial_coefficient.h>
+#include <array>
 #ifdef USE_CURRENT_TEST
 #undef USE_CURRENT_TEST
 #endif
@@ -70,7 +73,7 @@ class test_multivector_space : public RegisteredFunctor
 		return ss.str();
 	}
 
-	test_multivector_space() : RegisteredFunctor(__FUNCTION__, fct) {}
+	test_multivector_space() : RegisteredFunctor("test_multivector_space", fct) {}
 	static void fct()
 	{
 		module_t<float, 1> bin0({

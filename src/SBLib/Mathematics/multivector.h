@@ -27,7 +27,7 @@ private:
 	template<size_t subspace_mask>
 	struct get_traits
 	{
-		enum : size_t { mask = (bit_traits<subspace_mask>::population_count == rank_size) ? (subspace_mask & space_mask) : 0 };
+		enum : size_t { mask = (bit_count(subspace_mask) == rank_size) ? (subspace_mask & space_mask) : 0 };
 		using reference_type       = typename get_traits_helper<mask>::reference_type;
 		using const_reference_type = typename get_traits_helper<mask>::const_reference_type;
 	};
@@ -274,4 +274,4 @@ public:
 	components_type components;
 };
 } // namespace SBLib::Mathematics
-namespace SBLib { using namespace Mathematics; }
+namespace SBLib { using namespace SBLib::Mathematics; }

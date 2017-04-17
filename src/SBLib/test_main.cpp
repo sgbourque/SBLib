@@ -1,61 +1,56 @@
 #include <test_common.h>
+#include <Traits/bit_traits.h>
 //#include <Traits/clifford_traits.h>
 
-constexpr uint8_t  operator "" _8u (unsigned long long int value) { return static_cast<uint8_t>(value); }
-constexpr uint16_t operator "" _16u(unsigned long long int value) { return static_cast<uint16_t>(value); }
-constexpr uint32_t operator "" _32u(unsigned long long int value) { return static_cast<uint32_t>(value); }
-constexpr uint64_t operator "" _64u(unsigned long long int value) { return static_cast<uint64_t>(value); }
+constexpr uint8_t  operator "" _8u (unsigned long long int value) noexcept { return static_cast<uint8_t>(value); }
+constexpr uint16_t operator "" _16u(unsigned long long int value) noexcept { return static_cast<uint16_t>(value); }
+constexpr uint32_t operator "" _32u(unsigned long long int value) noexcept { return static_cast<uint32_t>(value); }
+constexpr uint64_t operator "" _64u(unsigned long long int value) noexcept { return static_cast<uint64_t>(value); }
 
-constexpr int8_t  operator "" _8i (unsigned long long int value) { return static_cast<int8_t>(value); }
-constexpr int16_t operator "" _16i(unsigned long long int value) { return static_cast<int16_t>(value); }
-constexpr int32_t operator "" _32i(unsigned long long int value) { return static_cast<int32_t>(value); }
-constexpr int64_t operator "" _64i(unsigned long long int value) { return static_cast<int64_t>(value); }
+constexpr int8_t  operator "" _8i (unsigned long long int value) noexcept { return static_cast<int8_t>(value); }
+constexpr int16_t operator "" _16i(unsigned long long int value) noexcept { return static_cast<int16_t>(value); }
+constexpr int32_t operator "" _32i(unsigned long long int value) noexcept { return static_cast<int32_t>(value); }
+constexpr int64_t operator "" _64i(unsigned long long int value) noexcept { return static_cast<int64_t>(value); }
 
 constexpr int64_t test_min     =  0x8000000000000000_64i;
-constexpr int64_t test_neg_min = -0x8000000000000000_64i;
+//constexpr int64_t test_neg_min = -0x8000000000000000_64i;
 static_assert( test_min     == -std::numeric_limits<int64_t>::max() - 1, "" );
-static_assert( test_neg_min == +(-std::numeric_limits<int64_t>::max() - 1), "" );
-static_assert( test_neg_min == -(-std::numeric_limits<int64_t>::max() - 1), "" );
-static_assert( test_min     == -test_neg_min, "" );
+//static_assert( test_neg_min == +(-std::numeric_limits<int64_t>::max() - 1), "" );
+//static_assert( test_neg_min == -(-std::numeric_limits<int64_t>::max() - 1), "" );
+//static_assert( test_min     == -test_neg_min, "" );
+
+
+#include <bitset>
 
 namespace SBLib::Traits
 {
-template<size_t mask>
-struct bit_mask : std::integral_constant<size_t, mask> {};
-
-template<size_t mask, size_t current_mask, size_t current_bit>
-struct bit_iterator
-{
-	template< typename = std::enable_if_t< (current_mask | current_bit) != 0 > >
-	constexpr auto operator ++() const { return bit_iterator<mask, (current_mask & ~current_bit), current_mask & ~((current_mask & ~current_bit) - 1)>(); }
-	template< typename = std::enable_if_t< (current_mask | current_bit) != 0 > >
-	constexpr auto operator ->() const { return reinterpret_cast< bit_mask<current_bit>* >(nullptr); }
-	template< typename = std::enable_if_t< (current_mask | current_bit) != 0 > >
-	constexpr auto operator *() const  { return *(this->operator->()); }
-};
-template<size_t mask>
-constexpr auto begin( bit_mask<mask> )
-{
-	return ++bit_iterator<mask, mask, 0>();
-}
-template<size_t mask>
-constexpr auto end(bit_mask<mask>)
-{
-	return bit_iterator<mask, 0, 0>();
-}
-
-static_assert( (*begin( bit_mask<5>{} )).value == 1, "invalid bit iterator" );
-static_assert( begin( bit_mask<5>{} )->value == 1, "invalid bit iterator" );
-static_assert( (++begin( bit_mask<5>{} ))->value == 4, "invalid bit iterator" );
-static_assert( std::is_same_v< decltype( ++++begin( bit_mask<5>{} ) ), decltype( end( bit_mask<5>() ) ) >, "invalid bit iterator" );
-
-template< typename begin_t, typename end_t, typename operation_t >
-constexpr void for_each( begin_t begin, end_t end, operation_t op )
-{
-	op( *begin );
-	for_each( ++begin, end, op );
-}
-template< typename end_t, typename operation_t > constexpr void for_each( end_t, end_t, operation_t ) {}
+//template<size_t mask> struct bit_mask : std::integral_constant<size_t, mask> {};
+//
+//template<size_t mask, size_t current_mask, size_t current_bit>
+//struct bit_iterator
+//{
+//	template< typename = std::enable_if_t< (current_mask | current_bit) != 0 > >
+//	constexpr auto operator ++() const { return bit_iterator<mask, (current_mask & ~current_bit), current_mask & ~((current_mask & ~current_bit) - 1)>(); }
+//	template< typename = std::enable_if_t< (current_mask | current_bit) != 0 > >
+//	constexpr auto operator ->() const { return reinterpret_cast< bit_mask<current_bit>* >(nullptr); }
+//	template< typename = std::enable_if_t< (current_mask | current_bit) != 0 > >
+//	constexpr auto operator *() const  { return *(this->operator->()); }
+//};
+//template<size_t mask> constexpr auto begin( bit_mask<mask> ) { return ++bit_iterator<mask, mask, 0>(); }
+//template<size_t mask> constexpr auto end(bit_mask<mask>) { return bit_iterator<mask, 0, 0>(); }
+//
+//static_assert( (*begin( bit_mask<5>{} )).value == 1, "invalid bit iterator" );
+//static_assert( begin( bit_mask<5>{} )->value == 1, "invalid bit iterator" );
+//static_assert( (++begin( bit_mask<5>{} ))->value == 4, "invalid bit iterator" );
+//static_assert( std::is_same_v< decltype( ++++begin( bit_mask<5>{} ) ), decltype( end( bit_mask<5>() ) ) >, "invalid bit iterator" );
+//
+//template< typename begin_t, typename end_t, typename operation_t >
+//constexpr void for_each( begin_t begin, end_t end, operation_t op )
+//{
+//	op( *begin );
+//	for_each( ++begin, end, op );
+//}
+//template< typename end_t, typename operation_t > constexpr void for_each( end_t, end_t, operation_t ) {}
 
 //#define disable_warning(X) __pragma( warning (disable: X) )
 //#define reset_warnings() __pragma( warning (default) )
@@ -82,44 +77,116 @@ template< typename end_t, typename operation_t > constexpr void for_each( end_t,
 //	auto parallel_mask = ( max_value / half_mask );
 //	return parallel_mask;
 //}
+//
+//template<class T> constexpr T integer_log2(T value) { return (value > 1) ? 1 + integer_log2((value >> 1)) : 0; }
+//template<class T> constexpr T half_bits_mask(T iteration) { return (T(1) << (T(1) << iteration)) - T(1); }
+//template<class T> constexpr T parallel_bits_mask(T iteration)
+//{
+//	static_assert(std::is_unsigned_v<T>, "bit mask must be unsigned");
+//	constexpr T all_bits = T(~T(0));
+//	return half_bits_mask(iteration) * T(all_bits / half_bits_mask(iteration + 1));
+//}
+//template<class T>
+//constexpr T parallel_bit_count(T mask, T iteration)
+//{
+//	const auto parallel_mask = parallel_bits_mask(iteration);
+//	return ((mask >> (T(0) << iteration)) & parallel_mask) + ((mask >> (T(1) << iteration)) & parallel_mask);
+//}
+//
+//template<class T>
+//constexpr auto bit_count(T mask)
+//{
+//	using type = std::make_unsigned_t<T>;
+//	type bit_mask = static_cast<type>(mask);
+//	constexpr auto max_iteration = integer_log2( sizeof(T) * CHAR_BIT );
+//	for ( type iteration = 0; iteration < max_iteration; ++iteration )
+//		bit_mask = parallel_bit_count(bit_mask, iteration);
+//	return bit_mask;
+//}
+//
+//template<size_t size>
+//constexpr auto bit_count(std::bitset<size> mask)
+//{
+//	return mask.size();
+//}
 
-template<class T> constexpr auto half_bits_mask(T iteration) { return (T(1) << (T(1) << iteration)) - T(1); }
-template<class T> constexpr auto parallel_bits_mask(T iteration)
-{
-	static_assert(std::is_unsigned_v<T>, "bit mask must be unsigned");
-	constexpr T all_bits = T(~T(0));
-	return (half_bits_mask(iteration) * (all_bits / half_bits_mask(iteration + 1)));
-}
-template<class T>
-constexpr auto parallel_bit_count(T mask, T iteration)
-{
-	const T parallel_mask = parallel_bits_mask(iteration);
-	return ((mask >> (T(0) << iteration)) & parallel_mask) + ((mask >> (T(1) << iteration)) & parallel_mask);
-}
 
-template<class T>
-constexpr auto bit_count(T mask)
-{
-	using type = size_t;//std::make_unsigned_t<T>;
-	type bit_mask = mask;
-	bit_mask = parallel_bit_count(bit_mask, type(0));
-	bit_mask = parallel_bit_count(bit_mask, type(1));
-	bit_mask = parallel_bit_count(bit_mask, type(2));
-	bit_mask = parallel_bit_count(bit_mask, type(3));
-	bit_mask = parallel_bit_count(bit_mask, type(4));
-	bit_mask = parallel_bit_count(bit_mask, type(5));
-	return bit_mask;
-}
-
-static_assert( bit_count(-0x1_8i) == 0x40, "invalid bit count" );
-static_assert( bit_count(0x3_8i) == 2, "invalid bit count" );
-static_assert( bit_count(0xF_8i) == 4, "invalid bit count" );
-static_assert( bit_count(0xFF_16i) == 8, "invalid bit count" );
+//static_assert( bit_count(-0x1_8i) == sizeof( decltype(-0x1_8i) ) * CHAR_BIT, "invalid bit count" );
+//static_assert( bit_count(0x1_8i) == 1, "invalid bit count" );
+//static_assert( bit_count(0x3_8i) == 2, "invalid bit count" );
+//static_assert( bit_count(0xF_8i) == 4, "invalid bit count" );
+//static_assert( bit_count(0xFF_16i) == 8, "invalid bit count" );
 static_assert( bit_count(0xFFFF_16u) == 16, "invalid bit count" );
-static_assert( bit_count(0xFFFF_32i) == 16, "invalid bit count" );
-static_assert( bit_count(0xFFFFFFFF_32u) == 32, "invalid bit count" );
-static_assert( bit_count(0xFFFFFFFFFFFFFFFF_64u) == 64, "invalid bit count" );
+//static_assert( bit_count(0xFFFF_32i) == 16, "invalid bit count" );
+//static_assert( bit_count(0xFFFFFFFF_32u) == 32, "invalid bit count" );
+//static_assert( bit_count(0xFFFFFFFFFFFFFFFF_64u) == 64, "invalid bit count" );
+//static_assert( bit_count( std::bitset<8>{1} ) == 8, "invalid bit count" );
 
+static_assert(integer_log2(1 << 0) == 0);
+static_assert(integer_log2(1 << 1) == 1);
+static_assert(integer_log2(1 << 2) == 2);
+static_assert(integer_log2(1 << 3) == 3);
+static_assert(integer_log2(1 << 4) == 4);
+static_assert(integer_log2(1 << 5) == 5);
+static_assert(integer_log2(1 << 6) == 6);
+static_assert(integer_log2(1 << 7) == 7);
+static_assert(integer_log2(1 << 8) == 8);
+static_assert(integer_log2(1 << 9) == 9);
+static_assert(integer_log2(1 << 10) == 10);
+static_assert(integer_log2(1 << 11) == 11);
+static_assert(integer_log2(1 << 12) == 12);
+static_assert(integer_log2(1 << 13) == 13);
+static_assert(integer_log2(1 << 14) == 14);
+static_assert(integer_log2(1 << 15) == 15);
+static_assert(integer_log2(1 << 16) == 16);
+static_assert(integer_log2(1 << 17) == 17);
+static_assert(integer_log2(1 << 18) == 18);
+static_assert(integer_log2(1 << 19) == 19);
+static_assert(integer_log2(1 << 20) == 20);
+static_assert(integer_log2(1 << 21) == 21);
+static_assert(integer_log2(1 << 22) == 22);
+static_assert(integer_log2(1 << 23) == 23);
+static_assert(integer_log2(1 << 24) == 24);
+static_assert(integer_log2(1 << 25) == 25);
+static_assert(integer_log2(1 << 26) == 26);
+static_assert(integer_log2(1 << 27) == 27);
+static_assert(integer_log2(1 << 28) == 28);
+static_assert(integer_log2(1 << 29) == 29);
+static_assert(integer_log2(1 << 30) == 30);
+static_assert(integer_log2(1ull << 31) == 31);
+static_assert(integer_log2(1ull << 32) == 32);
+static_assert(integer_log2(1ull << 33) == 33);
+static_assert(integer_log2(1ull << 34) == 34);
+static_assert(integer_log2(1ull << 35) == 35);
+static_assert(integer_log2(1ull << 36) == 36);
+static_assert(integer_log2(1ull << 37) == 37);
+static_assert(integer_log2(1ull << 38) == 38);
+static_assert(integer_log2(1ull << 39) == 39);
+static_assert(integer_log2(1ull << 40) == 40);
+static_assert(integer_log2(1ull << 41) == 41);
+static_assert(integer_log2(1ull << 42) == 42);
+static_assert(integer_log2(1ull << 43) == 43);
+static_assert(integer_log2(1ull << 44) == 44);
+static_assert(integer_log2(1ull << 45) == 45);
+static_assert(integer_log2(1ull << 46) == 46);
+static_assert(integer_log2(1ull << 47) == 47);
+static_assert(integer_log2(1ull << 48) == 48);
+static_assert(integer_log2(1ull << 49) == 49);
+static_assert(integer_log2(1ull << 50) == 50);
+static_assert(integer_log2(1ull << 51) == 51);
+static_assert(integer_log2(1ull << 52) == 52);
+static_assert(integer_log2(1ull << 53) == 53);
+static_assert(integer_log2(1ull << 54) == 54);
+static_assert(integer_log2(1ull << 55) == 55);
+static_assert(integer_log2(1ull << 56) == 56);
+static_assert(integer_log2(1ull << 57) == 57);
+static_assert(integer_log2(1ull << 58) == 58);
+static_assert(integer_log2(1ull << 59) == 59);
+static_assert(integer_log2(1ull << 60) == 60);
+static_assert(integer_log2(1ull << 61) == 61);
+static_assert(integer_log2(1ull << 62) == 62);
+static_assert(integer_log2(1ull << 63) == 63);
+static_assert(integer_log2(~0ull) == 63);
 
 //template<size_t remaining_bit_mask, bool is_big_endian, size_t first_bit = 0, int cur_index = -1>
 //struct bit_iterator : bit_mask<first_bit, is_big_endian>
@@ -251,7 +318,7 @@ namespace SBLib::Test
 {
 class test : RegisteredFunctor
 {
-	test() : RegisteredFunctor(__FUNCTION__, fct) {}
+	test() : RegisteredFunctor("test", fct) {}
 	static void fct()
 	{
 	}
@@ -265,13 +332,13 @@ int main()
 	using namespace SBLib::Test;
 
 	bool quit = false, help = false;
-	size_t testCase = ~0u;
+	int testCase = -1;
 	do
 	{
 		if (RegisteredFunctor::size() > 1)
 		{
 			quit = help = false;
-			testCase = ~0u;
+			testCase = -1;
 			std::cout << "Enter test case [0 - " << RegisteredFunctor::size() - 1 << "] or 'q' to quit, 'h' for help : ";
 			std::cin >> testCase;
 			while (!std::cin.good())

@@ -498,7 +498,7 @@ class test_clifford_table_WIP : RegisteredFunctor
 		};
 	};
 
-	test_clifford_table_WIP() : RegisteredFunctor(__FUNCTION__, fct) {}
+	test_clifford_table_WIP() : RegisteredFunctor("test_clifford_table_WIP", fct) {}
 	static void fct()
 	{
 		enum : size_t { dim = 7, clifford_dim = (1 << dim), bloc_size = (1 << std::min<size_t>(5, dim)), };

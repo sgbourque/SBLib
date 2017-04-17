@@ -43,18 +43,17 @@ namespace SBLib::Traits::Mathematics
 	struct alternating_traits
 	{
 	private:
-		typedef bit_traits<first>  first_traits;
 		typedef bit_traits<second> second_traits;
 		enum : size_t
 		{
-			second_grade             = second_traits::population_count,
+			second_grade             = bit_count(second),
 			second_permute_bit_index = (big_endian ? 0 : second_grade - 1),
-			second_permute_bit       = second_traits::template get_bit<second_permute_bit_index>(),
+			second_permute_bit       = get_bit<second_permute_bit_index>(second),
 
 			low_bit_mask                  = (second_permute_bit << 1) - 1,
 			high_bit_mask                 = ~low_bit_mask,
 			permute_bit_mask              = (first & (big_endian ? high_bit_mask : low_bit_mask)),
-			permute_bit_permutation_count = bit_traits<permute_bit_mask>::population_count,
+			permute_bit_permutation_count = bit_count(permute_bit_mask),
 
 			next_first  = (first | second_permute_bit),
 			next_second = (second & ~second_permute_bit),
@@ -123,12 +122,10 @@ namespace SBLib::Traits::Mathematics
 	template<size_t in_bit_set, bool big_endian = default_basis_big_endian>
 	struct reversion_conjugacy_traits
 	{
-	private:
-		typedef bit_traits<in_bit_set> traits;
 	public:
 		enum : size_t
 		{
-			grade = traits::population_count,
+			grade = bit_count(in_bit_set),
 		};
 		enum : int
 		{
@@ -144,12 +141,10 @@ namespace SBLib::Traits::Mathematics
 	template<size_t in_bit_set, bool big_endian = default_basis_big_endian>
 	struct grade_conjugacy_traits
 	{
-	private:
-		typedef bit_traits<in_bit_set> traits;
 	public:
 		enum : size_t
 		{
-			grade = traits::population_count,
+			grade = bit_count(in_bit_set),
 		};
 		enum : int
 		{
@@ -166,12 +161,10 @@ namespace SBLib::Traits::Mathematics
 	template<size_t in_bit_set, bool big_endian = default_basis_big_endian>
 	struct clifford_adjoint_conjugacy_traits
 	{
-	private:
-		typedef bit_traits<in_bit_set> traits;
 	public:
 		enum : size_t
 		{
-			grade = traits::population_count,
+			grade = bit_count(in_bit_set),
 		};
 		enum : int
 		{
@@ -218,9 +211,9 @@ namespace SBLib::Traits::Mathematics
 		};
 		enum : size_t
 		{
-			grade = bit_traits<bit_set>::population_count,
+			grade = bit_count(bit_set),
 		};
-		static_assert(grade == bit_traits<mask>::population_count - bit_traits<parallel_projection>::population_count, "Incorrect grade!");
+		static_assert(grade == bit_count(mask) - bit_count(parallel_projection), "Incorrect grade!");
 	};
 } // namespace SBLib::Traits::Mathematics
 namespace SBLib { using namespace Traits::Mathematics; }

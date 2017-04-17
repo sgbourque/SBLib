@@ -324,7 +324,7 @@ class test_dangerous_lambda : RegisteredFunctor
 		return do_sum;//;std::move(do_sum);
 	}
 
-	test_dangerous_lambda() : RegisteredFunctor(__FUNCTION__, fct) {}
+	test_dangerous_lambda() : RegisteredFunctor("test_dangerous_lambda", fct) {}
 	static void fct()
 	{
 		auto do_sum = dangerous();

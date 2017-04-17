@@ -1,5 +1,7 @@
+#define USE_MULTIVECTOR 1
 #include <test_common.h>
 #include <Traits/clifford_traits.h>
+#include <Mathematics/multivector.h>
 
 #include <fstream>
 
@@ -209,7 +211,7 @@ class test_multivector : public RegisteredFunctor
 	using multivector_type2 = graded_multivector_t<float, e0 | e1 | e2, 2>;
 	using multivector_type3 = graded_multivector_t<float, e0 | e1 | e2, 3>;
 
-	test_multivector() : RegisteredFunctor(__FUNCTION__, fct) {}
+	test_multivector() : RegisteredFunctor("test_multivector", fct) {}
 	static void fct()
 	{
 		multivector_type1 test1{ cos(0.4f), -sin(0.4f), 0.0f };

@@ -1,4 +1,5 @@
 #include <test_common.h>
+#include <Mathematics/combinations.h>
 #ifdef USE_CURRENT_TEST
 #undef USE_CURRENT_TEST
 #endif
@@ -71,7 +72,7 @@ class test_combination : public RegisteredFunctor
 					do_action_internal(std::ostream& out)
 					{
 						const std::string delimiter = (loop == 0) ? "" : "^";
-						out << delimiter << "e" << SBLib::bit_traits<space_mask>::get_bit_index<bit_mask>();
+						out << delimiter << "e" << SBLib::get_bit_index(bit_mask);
 					}
 				};
 
@@ -84,10 +85,10 @@ class test_combination : public RegisteredFunctor
 						using traits = SBLib::bit_traits<value>;
 						enum : size_t
 						{
-							index            = SBLib::select_combinations<space_mask, traits::population_count>::get_components_index<value>(),
+							index            = SBLib::select_combinations<space_mask, bit_count(value)>::template get_components_index<value>(),
 
-							equiv_space_mask = (1uLL << SBLib::bit_traits<space_mask>::population_count) - 1,
-							equiv_value      = SBLib::select_combinations<equiv_space_mask, traits::population_count>::get<index>(),
+							equiv_space_mask = (1uLL << SBLib::bit_count(space_mask)) - 1,
+							equiv_value      = SBLib::select_combinations<equiv_space_mask, bit_count(value)>::get<index>(),
 						};
 						using equiv_traits = SBLib::bit_traits<equiv_value>;
 						out << "\t\t";
@@ -114,10 +115,10 @@ class test_combination : public RegisteredFunctor
 						enum : size_t
 						{
 							value = 0,
-							index = SBLib::combinations<space_mask>::select<traits::population_count>::get_components_index<value>(),
+							index = SBLib::combinations<space_mask>::select<bit_count(0)>::get_components_index<value>(),
 
-							equiv_space_mask = (1uLL << SBLib::bit_traits<space_mask>::population_count) - 1,
-							equiv_value = SBLib::combinations<equiv_space_mask>::select<traits::population_count>::get<index>(),
+							equiv_space_mask = (1uLL << SBLib::bit_count(space_mask)) - 1,
+							equiv_value = SBLib::combinations<equiv_space_mask>::select<bit_count(0)>::get<index>(),
 						};
 						static_assert(equiv_value == 0, "invalid scalar basis");
 						out << "\t\t";
@@ -160,7 +161,7 @@ class test_combination : public RegisteredFunctor
 		}
 	};
 
-	test_combination() : RegisteredFunctor(__FUNCTION__, fct) {}
+	test_combination() : RegisteredFunctor("test_combination", fct) {}
 	static void fct()
 	{
 		SBLib::for_each_bit_index<SPACE_PRINT_DIMENSION_MASK>::iterate<do_action>(std::cout);

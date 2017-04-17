@@ -1,3 +1,4 @@
+#define USE_MULTIVECTOR 1
 #include <test_common.h>
 
 #include <fstream>
@@ -24,7 +25,7 @@ class test_vector : public RegisteredFunctor
 	//static_assert(sizeof(vector_type2) == vector_type2::dimension_size * sizeof(vector_type2::scalar_type), "vector size is incorrect...");
 	static_assert(sizeof(vector_type3) == vector_type3::dimension_size * sizeof(vector_type3::scalar_type), "vector size is incorrect...");
 
-	test_vector() : RegisteredFunctor(__FUNCTION__, fct) {}
+	test_vector() : RegisteredFunctor("test_vector", fct) {}
 	static void fct()
 	{
 		vector_type1 test1{ -1.0f,-1.0f,-1.0f,-1.0f }; // sets all 4 components

@@ -84,4 +84,4 @@ public:
 	};
 };
 } // namespace SBLib::Mathematics
-namespace SBLib { using namespace Mathematics; }
+namespace SBLib { using namespace SBLib::Mathematics; }
