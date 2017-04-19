@@ -2,10 +2,6 @@
 #include <array>
 
 using namespace SBLib::Test;
-#ifdef USE_CURRENT_TEST
-#undef USE_CURRENT_TEST
-#endif
-#define USE_CURRENT_TEST 1
 
 #define USING_NAIVE_IMPLEMENTATION 0
 #define USING_PASS_BY_REF          1
@@ -519,7 +515,5 @@ class test_lambda_plus_plus : RegisteredFunctor
 	}
 	static test_lambda_plus_plus instance;
 };
-#if USE_CURRENT_TEST
 test_lambda_plus_plus test_lambda_plus_plus::instance;
-#endif // #if USE_CURRENT_TEST
 } // namespace SBLib::Test

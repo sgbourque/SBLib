@@ -11,7 +11,7 @@ namespace
 	{
 		static_assert(std::is_unsigned_v<T>, "bit mask must be unsigned");
 		constexpr T all_bits = T(~T(0));
-		T parallel_mask = (T(1) << (iteration + 1)) < sizeof(T) * CHAR_BIT ? T(all_bits / half_bits_mask(iteration + 1)) : T(1);
+		T parallel_mask = T(T(1) << (iteration + 1)) < sizeof(T) * CHAR_BIT ? T(all_bits / half_bits_mask(iteration + 1)) : T(1);
 		return half_bits_mask(iteration) * parallel_mask;
 	}
 	template<class T>

@@ -161,7 +161,5 @@ class test_vector : public RegisteredFunctor
 
 	static test_vector instance;
 };
-#if USE_CURRENT_TEST
 test_vector test_vector::instance;
-#endif // #if USE_CURRENT_TEST
 } // namespace SBLib::Test

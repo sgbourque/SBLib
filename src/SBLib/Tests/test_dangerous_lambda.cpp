@@ -1,9 +1,5 @@
 #include <test_common.h>
-using namespace SBLib::Test;
-#ifdef USE_CURRENT_TEST
-#undef USE_CURRENT_TEST
-#endif
-#define USE_CURRENT_TEST 0
+//using namespace SBLib::Test;
 
 template<typename functor_type>
 struct invoke_helper
@@ -172,6 +168,8 @@ auto invoke(std::tuple<arg_types...>&& arguments)
 	return invoke_helper<functor_type>::call(std::forward<decltype(arguments)>(arguments));
 }
 
+namespace SBLib::Test
+{
 class test_dangerous_lambda : RegisteredFunctor
 {
 	template<template<typename...> typename base_traits, typename... arg_types>
@@ -332,6 +330,5 @@ class test_dangerous_lambda : RegisteredFunctor
 	}
 	static test_dangerous_lambda instance;
 };
-#if USE_CURRENT_TEST
 test_dangerous_lambda test_dangerous_lambda::instance;
-#endif // #if USE_CURRENT_TEST
+} // namespace SBLib::Test

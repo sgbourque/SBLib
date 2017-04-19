@@ -12,11 +12,6 @@
 #include <DirectXMath.h>
 #endif
 
-#ifdef USE_CURRENT_TEST
-#undef USE_CURRENT_TEST
-#endif
-#define USE_CURRENT_TEST 1
-
 namespace SBLib::Mathematics
 {
 //
@@ -310,7 +305,5 @@ class test_multivector : public RegisteredFunctor
 
 	static test_multivector instance;
 };
-#if USE_CURRENT_TEST
 test_multivector test_multivector::instance;
-#endif // #if USE_CURRENT_TEST
 } // namespace SBLib::Test

@@ -1,9 +1,5 @@
 #include <test_common.h>
 #include <Mathematics/combinations.h>
-#ifdef USE_CURRENT_TEST
-#undef USE_CURRENT_TEST
-#endif
-#define USE_CURRENT_TEST 1
 
 namespace SBLib::Test
 {
@@ -85,10 +81,10 @@ class test_combination : public RegisteredFunctor
 						using traits = SBLib::bit_traits<value>;
 						enum : size_t
 						{
-							index            = SBLib::select_combinations<space_mask, bit_count(value)>::template get_components_index<value>(),
+							index            = get_components_index<value>( select_combinations<space_mask, bit_count(value)>() ),
 
 							equiv_space_mask = (1uLL << SBLib::bit_count(space_mask)) - 1,
-							equiv_value      = SBLib::select_combinations<equiv_space_mask, bit_count(value)>::template get<index>(),
+							equiv_value      = get<index>( select_combinations<equiv_space_mask, bit_count(value)>() ),
 						};
 						using equiv_traits = SBLib::bit_traits<equiv_value>;
 						out << "\t\t";
@@ -114,10 +110,10 @@ class test_combination : public RegisteredFunctor
 						enum : size_t
 						{
 							value = 0,
-							index = SBLib::select_combinations<space_mask, bit_count(0)>::template get_components_index<value>(),
+							index = get_components_index<value>( select_combinations<space_mask, bit_count(0)>() ),
 
 							equiv_space_mask = (1uLL << SBLib::bit_count(space_mask)) - 1,
-							equiv_value = SBLib::select_combinations<equiv_space_mask, bit_count(0)>::template get<index>(),
+							equiv_value = get<index>( select_combinations<equiv_space_mask, bit_count(0)>() ),
 						};
 						static_assert(equiv_value == 0, "invalid scalar basis");
 						out << "\t\t";
@@ -168,7 +164,5 @@ class test_combination : public RegisteredFunctor
 	}
 	static test_combination instance;
 };
-#if USE_CURRENT_TEST
 test_combination test_combination::instance;
-#endif // #if USE_CURRENT_TEST
 } // namespace SBLib::Test

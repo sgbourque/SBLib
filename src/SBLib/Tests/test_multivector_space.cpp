@@ -2,10 +2,8 @@
 #include <test_common.h>
 #include <Mathematics/binomial_coefficient.h>
 #include <array>
-#ifdef USE_CURRENT_TEST
-#undef USE_CURRENT_TEST
-#endif
-#define USE_CURRENT_TEST 0
+
+constexpr float operator "" _f ( unsigned long long v ) { return static_cast<float>( v ); }
 
 namespace SBLib::Test
 {
@@ -19,15 +17,18 @@ class test_multivector_space : public RegisteredFunctor
 	{
 		typedef field_type field_t;
 		enum { dimension = dimension_size };
+		using container_t = std::array<field_t, dimension>;
 
 		module_t()
 			: components()
 		{}
-		module_t(std::array<field_t, dimension>&& coords)
-			: components(coords)
+
+		template<typename... coords_t>
+		module_t( coords_t&&... coords )
+			: components{{ std::forward<coords_t>(coords)... }}
 		{}
 
-		std::array<field_t, dimension> components;
+		container_t components;
 	};
 
 	//
@@ -41,10 +42,11 @@ class test_multivector_space : public RegisteredFunctor
 		enum { rank = rank_size };
 
 		uniform_multimodule_t()
-			: module_t()
+			: super()
 		{}
-		uniform_multimodule_t(std::array<typename module_type::field_t, super::dimension>&& coords)
-			: super(std::move(coords))
+		template<typename... coords_t>
+		uniform_multimodule_t( coords_t&&... coords )
+			: super{ std::forward<coords_t>(coords)... }
 		{}
 	};
 	template<typename module_type>
@@ -77,79 +79,79 @@ class test_multivector_space : public RegisteredFunctor
 	static void fct()
 	{
 		module_t<float, 1> bin0({
-			SBLib::binomial_coefficient<0,0>::value,
+			float(SBLib::binomial_coefficient<0,0>::value),
 		});
 		module_t<float, 2> bin1({
-			SBLib::binomial_coefficient<1, 0>::value,
-			SBLib::binomial_coefficient<1, 1>::value,
+			float(SBLib::binomial_coefficient<1, 0>::value),
+			float(SBLib::binomial_coefficient<1, 1>::value),
 		});
 		module_t<float, 3> bin2({
-			SBLib::binomial_coefficient<2, 0>::value,
-			SBLib::binomial_coefficient<2, 1>::value,
-			SBLib::binomial_coefficient<2, 2>::value,
+			float(SBLib::binomial_coefficient<2, 0>::value),
+			float(SBLib::binomial_coefficient<2, 1>::value),
+			float(SBLib::binomial_coefficient<2, 2>::value),
 		});
 		module_t<float, 4> bin3({
-			SBLib::binomial_coefficient<3, 0>::value,
-			SBLib::binomial_coefficient<3, 1>::value,
-			SBLib::binomial_coefficient<3, 2>::value,
-			SBLib::binomial_coefficient<3, 3>::value,
+			float(SBLib::binomial_coefficient<3, 0>::value),
+			float(SBLib::binomial_coefficient<3, 1>::value),
+			float(SBLib::binomial_coefficient<3, 2>::value),
+			float(SBLib::binomial_coefficient<3, 3>::value),
 		});
 		module_t<float, 5> bin4({
-			SBLib::binomial_coefficient<4, 0>::value,
-			SBLib::binomial_coefficient<4, 1>::value,
-			SBLib::binomial_coefficient<4, 2>::value,
-			SBLib::binomial_coefficient<4, 3>::value,
-			SBLib::binomial_coefficient<4, 4>::value,
+			float(SBLib::binomial_coefficient<4, 0>::value),
+			float(SBLib::binomial_coefficient<4, 1>::value),
+			float(SBLib::binomial_coefficient<4, 2>::value),
+			float(SBLib::binomial_coefficient<4, 3>::value),
+			float(SBLib::binomial_coefficient<4, 4>::value),
 		});
 		module_t<float, 6> bin5({
-			SBLib::binomial_coefficient<5, 0>::value,
-			SBLib::binomial_coefficient<5, 1>::value,
-			SBLib::binomial_coefficient<5, 2>::value,
-			SBLib::binomial_coefficient<5, 3>::value,
-			SBLib::binomial_coefficient<5, 4>::value,
-			SBLib::binomial_coefficient<5, 5>::value,
+			float(SBLib::binomial_coefficient<5, 0>::value),
+			float(SBLib::binomial_coefficient<5, 1>::value),
+			float(SBLib::binomial_coefficient<5, 2>::value),
+			float(SBLib::binomial_coefficient<5, 3>::value),
+			float(SBLib::binomial_coefficient<5, 4>::value),
+			float(SBLib::binomial_coefficient<5, 5>::value),
 		});
 		module_t<float, 7> bin6({
-			SBLib::binomial_coefficient<6, 0>::value,
-			SBLib::binomial_coefficient<6, 1>::value,
-			SBLib::binomial_coefficient<6, 2>::value,
-			SBLib::binomial_coefficient<6, 3>::value,
-			SBLib::binomial_coefficient<6, 4>::value,
-			SBLib::binomial_coefficient<6, 5>::value,
-			SBLib::binomial_coefficient<6, 6>::value,
+			float(SBLib::binomial_coefficient<6, 0>::value),
+			float(SBLib::binomial_coefficient<6, 1>::value),
+			float(SBLib::binomial_coefficient<6, 2>::value),
+			float(SBLib::binomial_coefficient<6, 3>::value),
+			float(SBLib::binomial_coefficient<6, 4>::value),
+			float(SBLib::binomial_coefficient<6, 5>::value),
+			float(SBLib::binomial_coefficient<6, 6>::value),
 		});
 		module_t<float, 8> bin7({
-			SBLib::binomial_coefficient<7, 0>::value,
-			SBLib::binomial_coefficient<7, 1>::value,
-			SBLib::binomial_coefficient<7, 2>::value,
-			SBLib::binomial_coefficient<7, 3>::value,
-			SBLib::binomial_coefficient<7, 4>::value,
-			SBLib::binomial_coefficient<7, 5>::value,
-			SBLib::binomial_coefficient<7, 6>::value,
-			SBLib::binomial_coefficient<7, 7>::value,
+			float(SBLib::binomial_coefficient<7, 0>::value),
+			float(SBLib::binomial_coefficient<7, 1>::value),
+			float(SBLib::binomial_coefficient<7, 2>::value),
+			float(SBLib::binomial_coefficient<7, 3>::value),
+			float(SBLib::binomial_coefficient<7, 4>::value),
+			float(SBLib::binomial_coefficient<7, 5>::value),
+			float(SBLib::binomial_coefficient<7, 6>::value),
+			float(SBLib::binomial_coefficient<7, 7>::value),
 		});
 		module_t<float, 9> bin8({
-			SBLib::binomial_coefficient<8, 0>::value,
-			SBLib::binomial_coefficient<8, 1>::value,
-			SBLib::binomial_coefficient<8, 2>::value,
-			SBLib::binomial_coefficient<8, 3>::value,
-			SBLib::binomial_coefficient<8, 4>::value,
-			SBLib::binomial_coefficient<8, 5>::value,
-			SBLib::binomial_coefficient<8, 6>::value,
-			SBLib::binomial_coefficient<8, 7>::value,
-			SBLib::binomial_coefficient<8, 8>::value,
+			float(SBLib::binomial_coefficient<8, 0>::value),
+			float(SBLib::binomial_coefficient<8, 1>::value),
+			float(SBLib::binomial_coefficient<8, 2>::value),
+			float(SBLib::binomial_coefficient<8, 3>::value),
+			float(SBLib::binomial_coefficient<8, 4>::value),
+			float(SBLib::binomial_coefficient<8, 5>::value),
+			float(SBLib::binomial_coefficient<8, 6>::value),
+			float(SBLib::binomial_coefficient<8, 7>::value),
+			float(SBLib::binomial_coefficient<8, 8>::value),
 		});
 		module_t<float, 10> bin9({
-			SBLib::binomial_coefficient<9, 0>::value,
-			SBLib::binomial_coefficient<9, 1>::value,
-			SBLib::binomial_coefficient<9, 2>::value,
-			SBLib::binomial_coefficient<9, 3>::value,
-			SBLib::binomial_coefficient<9, 4>::value,
-			SBLib::binomial_coefficient<9, 5>::value,
-			SBLib::binomial_coefficient<9, 6>::value,
-			SBLib::binomial_coefficient<9, 7>::value,
-			SBLib::binomial_coefficient<9, 8>::value,
-			SBLib::binomial_coefficient<9, 9>::value,
+			float(SBLib::binomial_coefficient<9, 0>::value),
+			float(SBLib::binomial_coefficient<9, 1>::value),
+			float(SBLib::binomial_coefficient<9, 2>::value),
+			float(SBLib::binomial_coefficient<9, 3>::value),
+			float(SBLib::binomial_coefficient<9, 4>::value),
+			float(SBLib::binomial_coefficient<9, 5>::value),
+			float(SBLib::binomial_coefficient<9, 6>::value),
+			float(SBLib::binomial_coefficient<9, 7>::value),
+			float(SBLib::binomial_coefficient<9, 8>::value),
+			float(SBLib::binomial_coefficient<9, 9>::value),
 		});
 		std::cout
 			<< to_string<out_t>(bin0) << std::endl
@@ -165,14 +167,12 @@ class test_multivector_space : public RegisteredFunctor
 
 		typedef uniform_multimodule_t<decltype(bin5), 4> uniform_multimodule_type;
 		uniform_multimodule_type multivec6_4({
-			uniform_multimodule_type::dimension, decltype(bin5)::dimension, 4
+			float(uniform_multimodule_type::dimension), float(decltype(bin5)::dimension), 4.0f
 		});
 		std::cout << decltype(multivec6_4)::dimension << std::endl;
 		std::cout << to_string<out_t>(multivec6_4) << std::endl;
 	}
 	static test_multivector_space instance;
 };
-#if USE_CURRENT_TEST
 test_multivector_space test_multivector_space::instance;
-#endif // #if USE_CURRENT_TEST
 } // namespace SBLib::Test

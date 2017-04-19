@@ -6,51 +6,67 @@ namespace SBLib::Mathematics
 //
 // graded_multivector_t
 //
+template< typename T > struct get_type_traits;
+
+template<typename scalar_t, size_t space_mask, size_t rank_size> struct graded_multivector_t;
+template<typename scalar_t, size_t space_mask, size_t rank_size>
+struct get_type_traits< graded_multivector_t<scalar_t, space_mask, rank_size> >
+{
+	using reference_type       = scalar_t&;
+	using const_reference_type = const scalar_t&;
+};
+template<typename scalar_t, size_t space_mask>
+struct get_type_traits< graded_multivector_t<scalar_t, space_mask, 0> >
+{
+	using reference_type       = scalar_t;
+	using const_reference_type = scalar_t;
+};
+
 template<typename scalar_t, size_t space_mask, size_t rank_size>
 struct graded_multivector_t
 {
 private:
 	using traits = select_combinations<space_mask, rank_size>;
 
-	template<size_t subspace_mask>
-	struct get_traits_helper
-	{
-		using reference_type       = scalar_t&;
-		using const_reference_type = const scalar_t&;
-	};
-	template<>
-	struct get_traits_helper<0>
-	{
-		using reference_type       = scalar_t;
-		using const_reference_type = scalar_t;
-	};
+	//template<size_t subspace_mask>
+	//struct get_traits_helper
+	//{
+	//	using reference_type       = scalar_t&;
+	//	using const_reference_type = const scalar_t&;
+	//};
+	//template<>
+	//struct get_traits_helper<0>
+	//{
+	//	using reference_type       = scalar_t;
+	//	using const_reference_type = scalar_t;
+	//};
 	template<size_t subspace_mask>
 	struct get_traits
 	{
 		enum : size_t { mask = (bit_count(subspace_mask) == rank_size) ? (subspace_mask & space_mask) : 0 };
-		using reference_type       = typename get_traits_helper<mask>::reference_type;
-		using const_reference_type = typename get_traits_helper<mask>::const_reference_type;
+		using reference_type       = typename get_type_traits< graded_multivector_t<scalar_t, mask, rank_size> >::reference_type;
+		using const_reference_type = typename get_type_traits< graded_multivector_t<scalar_t, mask, rank_size> >::const_reference_type;
 	};
-	template<size_t subspace_mask/*, typename = std::enable_if<subspace_mask != 0>*/>
-	constexpr auto get_helper() -> typename get_traits<subspace_mask>::reference_type
-	{
-		return components[traits::template get_components_index<subspace_mask>()];
-	}
-	template</*size_t subspace_mask, typename std::enable_if_t<subspace_mask == 0>*/>
-	constexpr auto get_helper<0>() -> typename get_traits<0>::reference_type
-	{
-		return scalar_t(0);
-	}
-	template<size_t subspace_mask>
-	constexpr auto get_helper() const -> typename get_traits<subspace_mask>::const_reference_type
-	{
-		return components[traits::template get_components_index<subspace_mask>()];
-	}
-	template</*size_t subspace_mask, typename std::enable_if_t<subspace_mask == 0>*/>
-	constexpr auto get_helper<0>() const -> typename get_traits<0>::const_reference_type
-	{
-		return scalar_t(0);
-	}
+	//template<size_t subspace_mask/*, typename = std::enable_if<subspace_mask != 0>*/>
+	//constexpr auto get_helper() -> typename get_traits<subspace_mask>::reference_type
+	//{
+	//	return components[get_components_index<subspace_mask>( traits() )];
+	//}
+	//template</*size_t subspace_mask, typename std::enable_if_t<subspace_mask == 0>*/>
+	//constexpr auto get_helper<0>() -> typename get_traits<0>::reference_type
+	//{
+	//	return scalar_t(0);
+	//}
+	//template<size_t subspace_mask>
+	//constexpr auto get_helper() const -> typename get_traits<subspace_mask>::const_reference_type
+	//{
+	//	return components[get_components_index<subspace_mask>( traits() )];
+	//}
+	//template</*size_t subspace_mask, typename std::enable_if_t<subspace_mask == 0>*/>
+	//constexpr auto get_helper<0>() const -> typename get_traits<0>::const_reference_type
+	//{
+	//	return scalar_t(0);
+	//}
 
 	template<size_t value, size_t loop>
 	struct component_assign_helper
@@ -103,21 +119,21 @@ public:
 		return project<alt_vector_t::scalar_type, alt_vector_t::space_mask>();
 	};
 
-	template<size_t subspace_mask>
-	constexpr auto get() -> typename get_traits<subspace_mask>::reference_type
-	{
-		return get_helper<get_traits<subspace_mask>::mask>();
-	}
-	template<size_t subspace_mask>
-	constexpr auto get() const
-	{
-		return get_helper<get_traits<subspace_mask>::mask>();
-	}
-	template<size_t subspace_mask>
-	constexpr auto cget() const
-	{
-		return get<subspace_mask>();
-	}
+	//template<size_t subspace_mask>
+	//constexpr auto get() -> typename get_traits<subspace_mask>::reference_type
+	//{
+	//	return get_helper<get_traits<subspace_mask>::mask>();
+	//}
+	//template<size_t subspace_mask>
+	//constexpr auto get() const
+	//{
+	//	return get_helper<get_traits<subspace_mask>::mask>();
+	//}
+	//template<size_t subspace_mask>
+	//constexpr auto cget() const
+	//{
+	//	return get<subspace_mask>();
+	//}
 
 	components_type components;
 };
@@ -173,46 +189,46 @@ template<typename scalar_t, size_t space_mask>
 struct graded_multivector_t<scalar_t, space_mask, 0>
 {
 private:
-	template<size_t subspace_mask/*, typename = std::enable_if<subspace_mask != 0>*/>
-	struct get_traits_helper
-	{
-		using reference_type       = scalar_t;
-		using const_reference_type = scalar_t;
-	};
-	template</*size_t subspace_mask, typename std::enable_if_t<subspace_mask == 0>*/>
-	struct get_traits_helper<0>
-	{
-		using reference_type       = scalar_t&;
-		using const_reference_type = const scalar_t&;
-	};
-	template<size_t subspace_mask>
-	struct get_traits
-	{
-		enum : size_t { mask = (subspace_mask == 0) ? subspace_mask : ~0u, };
-		using reference_type       = typename get_traits_helper<mask>::reference_type;
-		using const_reference_type = typename get_traits_helper<mask>::const_reference_type;
-	};
+	//template<size_t subspace_mask/*, typename = std::enable_if<subspace_mask != 0>*/>
+	//struct get_traits_helper
+	//{
+	//	using reference_type       = scalar_t;
+	//	using const_reference_type = scalar_t;
+	//};
+	//template</*size_t subspace_mask, typename std::enable_if_t<subspace_mask == 0>*/>
+	//struct get_traits_helper<0>
+	//{
+	//	using reference_type       = scalar_t&;
+	//	using const_reference_type = const scalar_t&;
+	//};
+	//template<size_t subspace_mask>
+	//struct get_traits
+	//{
+	//	enum : size_t { mask = (subspace_mask == 0) ? subspace_mask : ~0u, };
+	//	using reference_type       = typename get_traits_helper<mask>::reference_type;
+	//	using const_reference_type = typename get_traits_helper<mask>::const_reference_type;
+	//};
 
-	template<size_t subspace_mask>
-	constexpr auto get_helper() -> typename get_traits<subspace_mask>::reference_type
-	{
-		return scalar_t(0);
-	}
-	template</*size_t subspace_mask, typename std::enable_if_t<subspace_mask == 0>*/>
-	constexpr auto get_helper<0>() -> typename get_traits<0>::reference_type
-	{
-		return components[0];
-	}
-	template<size_t subspace_mask>
-	constexpr auto get_helper() const -> typename get_traits<subspace_mask>::const_reference_type
-	{
-		return scalar_t(0);
-	}
-	template</*size_t subspace_mask, typename std::enable_if_t<subspace_mask == 0>*/>
-	constexpr auto get_helper<0>() const -> typename get_traits<0>::const_reference_type
-	{
-		return components[0];
-	}
+	//template<size_t subspace_mask>
+	//constexpr auto get_helper() -> typename get_traits<subspace_mask>::reference_type
+	//{
+	//	return scalar_t(0);
+	//}
+	//template</*size_t subspace_mask, typename std::enable_if_t<subspace_mask == 0>*/>
+	//constexpr auto get_helper<0>() -> typename get_traits<0>::reference_type
+	//{
+	//	return components[0];
+	//}
+	//template<size_t subspace_mask>
+	//constexpr auto get_helper() const -> typename get_traits<subspace_mask>::const_reference_type
+	//{
+	//	return scalar_t(0);
+	//}
+	//template</*size_t subspace_mask, typename std::enable_if_t<subspace_mask == 0>*/>
+	//constexpr auto get_helper<0>() const -> typename get_traits<0>::const_reference_type
+	//{
+	//	return components[0];
+	//}
 
 public:
 	enum : size_t
@@ -255,21 +271,21 @@ public:
 	};
 
 
-	template<size_t subspace_mask>
-	constexpr auto get() -> typename get_traits<subspace_mask>::reference_type
-	{
-		return get_helper<get_traits<subspace_mask>::mask>();
-	}
-	template<size_t subspace_mask>
-	constexpr auto get() const
-	{
-		return get_helper<get_traits<subspace_mask>::mask>();
-	}
-	template<size_t subspace_mask>
-	constexpr auto cget() const
-	{
-		return get<subspace_mask>();
-	}
+	//template<size_t subspace_mask>
+	//constexpr auto get() -> typename get_traits<subspace_mask>::reference_type
+	//{
+	//	return get_helper<get_traits<subspace_mask>::mask>();
+	//}
+	//template<size_t subspace_mask>
+	//constexpr auto get() const
+	//{
+	//	return get_helper<get_traits<subspace_mask>::mask>();
+	//}
+	//template<size_t subspace_mask>
+	//constexpr auto cget() const
+	//{
+	//	return get<subspace_mask>();
+	//}
 
 	components_type components;
 };
