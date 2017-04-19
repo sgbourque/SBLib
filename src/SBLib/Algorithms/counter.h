@@ -28,7 +28,7 @@ namespace
 	}
 } // anonymous namespace
 
-template<int current_value = get_counter_value(counter_token<max_counter_token_count>())>
+template<size_t current_value = get_counter_value(counter_token<max_counter_token_count>())>
 inline constexpr size_t get_counter()
 {
 	constexpr auto value = counter_constant<current_value + 1>::value - 1; // force compiler to define next counter_constant

@@ -43,7 +43,7 @@ namespace SBLib::Traits::Mathematics
 	struct alternating_traits
 	{
 	private:
-		typedef bit_traits<second> second_traits;
+		//typedef bit_traits<second> second_traits;
 		enum : size_t
 		{
 			second_grade             = bit_count(second),

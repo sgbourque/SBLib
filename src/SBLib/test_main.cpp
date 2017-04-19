@@ -103,24 +103,17 @@ namespace SBLib::Traits
 //		bit_mask = parallel_bit_count(bit_mask, iteration);
 //	return bit_mask;
 //}
-//
-//template<size_t size>
-//constexpr auto bit_count(std::bitset<size> mask)
-//{
-//	return mask.size();
-//}
 
 
-//static_assert( bit_count(-0x1_8i) == sizeof( decltype(-0x1_8i) ) * CHAR_BIT, "invalid bit count" );
-//static_assert( bit_count(0x1_8i) == 1, "invalid bit count" );
-//static_assert( bit_count(0x3_8i) == 2, "invalid bit count" );
-//static_assert( bit_count(0xF_8i) == 4, "invalid bit count" );
-//static_assert( bit_count(0xFF_16i) == 8, "invalid bit count" );
+static_assert( bit_count(-0x1_8i) == sizeof( decltype(-0x1_8i) ) * CHAR_BIT, "invalid bit count" );
+static_assert( bit_count(0x1_8i) == 1, "invalid bit count" );
+static_assert( bit_count(0x3_8i) == 2, "invalid bit count" );
+static_assert( bit_count(0xF_8i) == 4, "invalid bit count" );
+static_assert( bit_count(0xFF_16i) == 8, "invalid bit count" );
 static_assert( bit_count(0xFFFF_16u) == 16, "invalid bit count" );
-//static_assert( bit_count(0xFFFF_32i) == 16, "invalid bit count" );
-//static_assert( bit_count(0xFFFFFFFF_32u) == 32, "invalid bit count" );
-//static_assert( bit_count(0xFFFFFFFFFFFFFFFF_64u) == 64, "invalid bit count" );
-//static_assert( bit_count( std::bitset<8>{1} ) == 8, "invalid bit count" );
+static_assert( bit_count(0xFFFF_32i) == 16, "invalid bit count" );
+static_assert( bit_count(0xFFFFFFFF_32u) == 32, "invalid bit count" );
+static_assert( bit_count(0xFFFFFFFFFFFFFFFF_64u) == 64, "invalid bit count" );
 
 static_assert(integer_log2(1 << 0) == 0);
 static_assert(integer_log2(1 << 1) == 1);

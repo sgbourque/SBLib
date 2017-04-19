@@ -7,15 +7,13 @@
 
 namespace SBLib::Test
 {
-class test_combination : public RegisteredFunctor
-{
 	enum
 	{
-		e0  = (1 << 0),  e1  = (1 << 1),
-		e2  = (1 << 2),  e3  = (1 << 3),
-		e4  = (1 << 4),  e5  = (1 << 5),
-		e6  = (1 << 6),  e7  = (1 << 7),
-		e8  = (1 << 8),  e9  = (1 << 9),
+		e0 = (1 << 0), e1 = (1 << 1),
+		e2 = (1 << 2), e3 = (1 << 3),
+		e4 = (1 << 4), e5 = (1 << 5),
+		e6 = (1 << 6), e7 = (1 << 7),
+		e8 = (1 << 8), e9 = (1 << 9),
 		e10 = (1 << 10), e11 = (1 << 11),
 		e12 = (1 << 12), e13 = (1 << 13),
 		e14 = (1 << 14), e15 = (1 << 15),
@@ -41,19 +39,21 @@ class test_combination : public RegisteredFunctor
 		E7 = (E6 | e17),
 #endif // #if USING_STANDARD_BASIS
 
-		SPACE_PRINT_DIMENSION_MASK = (e0|e1|e2|e3|e4|e7),
+		SPACE_PRINT_DIMENSION_MASK = (e0 | e1 | e2 | e3 | e4 | e7),
 	};
 
-	template<size_t dimension> static constexpr size_t get_space();
-	template<> static constexpr size_t get_space<0>() { return E0; }
-	template<> static constexpr size_t get_space<1>() { return E1; }
-	template<> static constexpr size_t get_space<2>() { return E2; }
-	template<> static constexpr size_t get_space<3>() { return E3; }
-	template<> static constexpr size_t get_space<4>() { return E4; }
-	template<> static constexpr size_t get_space<5>() { return E5; }
-	template<> static constexpr size_t get_space<6>() { return E6; }
-	template<> static constexpr size_t get_space<7>() { return E7; }
+	template<size_t dimension> constexpr size_t get_space();
+	template<> constexpr size_t get_space<0>() { return E0; }
+	template<> constexpr size_t get_space<1>() { return E1; }
+	template<> constexpr size_t get_space<2>() { return E2; }
+	template<> constexpr size_t get_space<3>() { return E3; }
+	template<> constexpr size_t get_space<4>() { return E4; }
+	template<> constexpr size_t get_space<5>() { return E5; }
+	template<> constexpr size_t get_space<6>() { return E6; }
+	template<> constexpr size_t get_space<7>() { return E7; }
 
+class test_combination : public RegisteredFunctor
+{
 	template<size_t space_mask>
 	class output_combinations
 	{
@@ -88,17 +88,17 @@ class test_combination : public RegisteredFunctor
 							index            = SBLib::select_combinations<space_mask, bit_count(value)>::template get_components_index<value>(),
 
 							equiv_space_mask = (1uLL << SBLib::bit_count(space_mask)) - 1,
-							equiv_value      = SBLib::select_combinations<equiv_space_mask, bit_count(value)>::get<index>(),
+							equiv_value      = SBLib::select_combinations<equiv_space_mask, bit_count(value)>::template get<index>(),
 						};
 						using equiv_traits = SBLib::bit_traits<equiv_value>;
 						out << "\t\t";
 						std::stringstream ss;
-						SBLib::for_each_bit<traits::bit_mask>::iterate<do_action_internal>(ss);
+						SBLib::for_each_bit<traits::value>::template iterate<do_action_internal>(ss);
 						out << std::left;
 						out << std::setw(24) << ss.str();
 						ss = std::stringstream();
 						out << std::setw(1) << " ~ ";
-						SBLib::for_each_bit<equiv_traits::bit_mask>::iterate<do_action_internal>(ss);
+						SBLib::for_each_bit<equiv_traits::value>::template iterate<do_action_internal>(ss);
 						out << std::setw(24) << ss.str();
 						ss.clear();
 						out << std::setw(1) << "\t(" << equiv_value << ")\t";
@@ -111,14 +111,13 @@ class test_combination : public RegisteredFunctor
 					static_assert(loop == 0, "Invalid loop");
 					do_action(std::ostream& out)
 					{
-						using traits = SBLib::bit_traits<0>;
 						enum : size_t
 						{
 							value = 0,
-							index = SBLib::combinations<space_mask>::select<bit_count(0)>::get_components_index<value>(),
+							index = SBLib::select_combinations<space_mask, bit_count(0)>::template get_components_index<value>(),
 
 							equiv_space_mask = (1uLL << SBLib::bit_count(space_mask)) - 1,
-							equiv_value = SBLib::combinations<equiv_space_mask>::select<bit_count(0)>::get<index>(),
+							equiv_value = SBLib::select_combinations<equiv_space_mask, bit_count(0)>::template get<index>(),
 						};
 						static_assert(equiv_value == 0, "invalid scalar basis");
 						out << "\t\t";
@@ -136,7 +135,8 @@ class test_combination : public RegisteredFunctor
 			output_rank(std::ostream& out)
 			{
 				out << "\tRank = " << rank_size << std::endl;
-				SBLib::for_each_combination<SBLib::select_combinations<space_mask, rank_size>>::iterate<output_combination<space_mask>::do_action>(out);
+				using output = output_combination<space_mask>;
+				SBLib::for_each_combination< SBLib::select_combinations<space_mask, rank_size> >::template iterate< output::template do_action >(out);
 			};
 		};
 
@@ -144,7 +144,7 @@ class test_combination : public RegisteredFunctor
 		static void do_action(std::ostream& out)
 		{
 			out << "Dim = " << SBLib::combinations<space_mask>::dimension_size << ":" << std::endl;
-			SBLib::static_for_each<0, SBLib::combinations<space_mask>::dimension_size + 1>::iterate<output_rank>(out);
+			SBLib::static_for_each<0, SBLib::combinations<space_mask>::dimension_size + 1>::template iterate<output_rank>(out);
 		};
 	};
 

@@ -11,7 +11,7 @@ namespace
 	{
 		static_assert(std::is_unsigned_v<T>, "bit mask must be unsigned");
 		constexpr T all_bits = T(~T(0));
-		T parallel_mask = half_bits_mask(iteration + 1) != 0 ? T(all_bits / half_bits_mask(iteration + 1)) : T(1);
+		T parallel_mask = (T(1) << (iteration + 1)) < sizeof(T) * CHAR_BIT ? T(all_bits / half_bits_mask(iteration + 1)) : T(1);
 		return half_bits_mask(iteration) * parallel_mask;
 	}
 	template<class T>
@@ -59,34 +59,7 @@ static constexpr T get_bit_index( T bit_value )
 	return bit_count(bit_value - 1);
 }
 
-template<size_t bit_mask>
-struct bit_traits
-{
-private:
-	enum : size_t
-	{
-		first_bit        = (((bit_mask - 1) & ~bit_mask) + 1),
-		remaining_bits   = (bit_mask & ~first_bit),
-	};
-public:
-	enum : size_t
-	{
-		bit_mask         = bit_mask,
-		population_count = bit_count(bit_mask),
-	};
-
-	//template<size_t index>
-	//static constexpr size_t get_bit()
-	//{
-	//	return SBLib::Traits::get_bit<index, size_t>(bit_mask);
-	//}
-
-	//template<size_t bit_value>
-	//static constexpr size_t get_bit_component()
-	//{
-	//	return SBLib::Traits::get_bit_component<bit_value, size_t>(bit_mask);
-	//}
-};
+template<size_t bit_mask> struct bit_traits : std::integral_constant<size_t, bit_mask> {};
 
 template<size_t bit_mask>
 struct get_bit_helper

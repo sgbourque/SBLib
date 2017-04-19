@@ -37,13 +37,13 @@ class test_clifford_algebra : public RegisteredFunctor
 	test_clifford_algebra() : RegisteredFunctor("test_clifford_algebra", fct) {}
 	static void fct()
 	{
-		std::cout << traits::bit_mask << " (" << traits::population_count << ")";
+		std::cout << traits::value << " (" << bit_count(traits::value) << ")";
 		std::cout << ": -> (";
-		SBLib::for_each_bit<traits::bit_mask>::iterate<output_bit<0>::do_action>(std::cout);
+		SBLib::for_each_bit<traits::value>::iterate<output_bit<0>::do_action>(std::cout);
 		std::cout << ") ~ (";
-		SBLib::for_each_bit_index<traits::bit_mask>::iterate<output_bit<get_bit<0>(traits::bit_mask)>::do_action>(std::cout);
+		SBLib::for_each_bit_index<traits::value>::iterate<output_bit<get_bit<0>(traits::value)>::do_action>(std::cout);
 		std::cout << ") ~ (";
-		SBLib::for_each_bit_compoment<traits::bit_mask>::iterate<output_bit<get_bit<0>(traits::bit_mask)>::do_action>(std::cout);
+		SBLib::for_each_bit_compoment<traits::value>::iterate<output_bit<get_bit<0>(traits::value)>::do_action>(std::cout);
 		std::cout << ")" << std::endl;
 
 		std::cout << "((e0 ^ e2) ^ e1) \n\t= "
