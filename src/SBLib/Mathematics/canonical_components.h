@@ -46,11 +46,11 @@ struct canonical_components_t : canonical_components_helper<canonical_components
 	canonical_components_t(const canonical_components_t& v) : container(v.container) {};
 
 	explicit canonical_components_t(const container_type& v) : container(v) {};
-	explicit canonical_components_t(const raw_type& v) { container.v = v; };
-	template<typename... scalars> explicit canonical_components_t(scalar_type&& first, scalars&&... coords) : container{ first, std::forward<scalars>(coords)... } { static_assert(sizeof...(scalars) < components_type::dimension_size, "Too many initializers."); }
+	//explicit canonical_components_t(const raw_type& v) { container.v = v; };
+	template<typename... scalars> explicit canonical_components_t(scalar_type first, scalars... coords) : container{{ first, std::forward<scalars>(coords)... }} { static_assert(sizeof...(scalars) < components_type::dimension_size, "Too many initializers."); }
 
 	canonical_components_t(container_type&& v) : container(v) {}
-	canonical_components_t(raw_type&& v) { container.v = std::move(v); }
+	//canonical_components_t(raw_type&& v) { container.v = std::move(v); }
 
 	const canonical_components_t& operator =(canonical_components_t&& v) { container = std::move(v.container); return *this; };
 	const canonical_components_t& operator =(const canonical_components_t& v) { container = v.container; return *this; };

@@ -7,8 +7,9 @@
 
 #include <intrin.h> // for SSE / AVX
 
-#define USE_DIRECTX_MATH _MSC_EXTENSIONS
+#define USE_DIRECTX_MATH 0 //((_MSC_VER > 0) && (_MSC_EXTENSIONS != 0))
 #if USE_DIRECTX_MATH
+#error
 #include <DirectXMath.h>
 #endif
 
@@ -17,6 +18,24 @@ namespace SBLib::Mathematics
 //
 // Wedge product
 //
+
+template<int sign, typename scalar_t>
+struct assign
+{
+	static constexpr void alternate_multiply(scalar_t, scalar_t, scalar_t) noexcept {}
+	static constexpr void conjugate(scalar_t, scalar_t) noexcept {}
+};
+template<typename scalar_t> struct assign<+1, scalar_t>
+{
+	static constexpr void alternate_multiply(scalar_t& result, scalar_t u, scalar_t v) noexcept { result += (u*v); }
+	static constexpr void conjugate(scalar_t& result, const scalar_t u) noexcept { result = +u; }
+};
+template<typename scalar_t> struct assign<-1, scalar_t>
+{
+	static constexpr void alternate_multiply(scalar_t& result, scalar_t u, scalar_t v) noexcept { result -= (u*v); }
+	static constexpr void conjugate(scalar_t& result, const scalar_t u) noexcept { result = -u; }
+};
+
 template<size_t subspace_mask, size_t loop>
 struct wedge_product_helper
 {
@@ -24,26 +43,27 @@ private:
 	template<size_t subspace_mask2, size_t loop2>
 	struct wedge_product_internal
 	{
-		template<typename scalar_t>
-		struct assign
-		{
-			template<int sign> static constexpr void alternate_multiply(scalar_t, const scalar_t&, const scalar_t&) {}; // nothing to do
-		};
-		template<typename scalar_t>
-		struct assign<scalar_t&>
-		{
-			template<int sign> static constexpr void alternate_multiply    (scalar_t& result, const scalar_t& u, const scalar_t& v); // should not be called
-			template<>         static constexpr void alternate_multiply<+1>(scalar_t& result, const scalar_t& u, const scalar_t& v) { result += u * v; }
-			template<>         static constexpr void alternate_multiply<-1>(scalar_t& result, const scalar_t& u, const scalar_t& v) { result -= u * v; }
-		};
+		//template<typename scalar_t>
+		//struct assign
+		//{
+		//	template<int sign> static constexpr void alternate_multiply(scalar_t, const scalar_t&, const scalar_t&) {}; // nothing to do
+		//};
+		//template<typename scalar_t>
+		//struct assign<scalar_t&>
+		//{
+		//	template<int sign> static constexpr void alternate_multiply    (scalar_t& result, const scalar_t& u, const scalar_t& v); // should not be called
+		//	template<>         static constexpr void alternate_multiply<+1>(scalar_t& result, const scalar_t& u, const scalar_t& v) { result += u * v; }
+		//	template<>         static constexpr void alternate_multiply<-1>(scalar_t& result, const scalar_t& u, const scalar_t& v) { result -= u * v; }
+		//};
 
 	public:
 		template<typename scalar_t, size_t space_mask0, size_t space_mask2, size_t rank_size0, size_t rank_size2>
-		wedge_product_internal(graded_multivector_t<scalar_t, space_mask0, rank_size0>& result, const scalar_t& u, const graded_multivector_t<scalar_t, space_mask2, rank_size2>& v)
+		wedge_product_internal(graded_multivector_t<scalar_t, space_mask0, rank_size0>& result, scalar_t u, const graded_multivector_t<scalar_t, space_mask2, rank_size2>& v)
 		{
 			using traits = SBLib::alternating_traits<subspace_mask, subspace_mask2>;
-			using ref_type = decltype( result.get<(subspace_mask ^ subspace_mask2)>() );
-			assign<ref_type>::alternate_multiply<traits::sign>(result.get<(subspace_mask ^ subspace_mask2)>(), u, v.get<subspace_mask2>());
+			using ref_type = decltype( get<(subspace_mask ^ subspace_mask2)>(result) );
+			scalar_t v_component = get<subspace_mask2>(v);
+			assign<traits::sign, ref_type>::alternate_multiply(get<(subspace_mask ^ subspace_mask2)>(result), u, v_component);
 		}
 	};
 
@@ -51,7 +71,7 @@ public:
 	template<typename scalar_t, size_t space_mask0, size_t space_mask1, size_t space_mask2, size_t rank_size0, size_t rank_size1, size_t rank_size2>
 	wedge_product_helper(graded_multivector_t<scalar_t, space_mask0, rank_size0>& result, const graded_multivector_t<scalar_t, space_mask1, rank_size1>& u, const graded_multivector_t<scalar_t, space_mask2, rank_size2>& v)
 	{
-		SBLib::for_each_combination< SBLib::select_combinations<space_mask2, rank_size2> >::iterate<wedge_product_internal>(result, u.get<subspace_mask>(), v);
+		SBLib::for_each_combination< SBLib::select_combinations<space_mask2, rank_size2> >::template iterate<wedge_product_internal>(result, get<subspace_mask>(u), v);
 	}
 };
 //
@@ -62,7 +82,7 @@ auto wedge_product(const graded_multivector_t<scalar_t, space_mask1, rank_size1>
 {
 	using multivec_t = graded_multivector_t<scalar_t, (space_mask1 | space_mask2), (rank_size1 + rank_size2)>;
 	multivec_t result;
-	SBLib::for_each_combination< SBLib::select_combinations<space_mask1, rank_size1> >::iterate<wedge_product_helper>(result, u, v);
+	SBLib::for_each_combination< SBLib::select_combinations<space_mask1, rank_size1> >::template iterate<wedge_product_helper>(result, u, v);
 	return std::move(result);
 }
 
@@ -112,29 +132,17 @@ template<size_t subspace_mask, size_t loop>
 struct hodge_conjugate_helper
 {
 private:
-	using scalar_t = float;
-	template<typename scalar_t>
-	struct assign
-	{
-		template<int sign> static constexpr void conjugate(scalar_t, const scalar_t&) {}; // result is not in destination space : nothing to do
-	};
-	template<typename scalar_t>
-	struct assign<scalar_t&>
-	{
-		template<int sign> static constexpr void conjugate(scalar_t& result, const scalar_t& u); // should not be called ever
-		template<>         static constexpr void conjugate<+1>(scalar_t& result, const scalar_t& u) { result = +u; }
-		template<>         static constexpr void conjugate<-1>(scalar_t& result, const scalar_t& u) { result = -u; }
-	};
-
+	//using scalar_t = float;
 public:
 	template<typename scalar_t, size_t space_mask0, size_t space_mask1, size_t rank_size0, size_t rank_size1>
 	hodge_conjugate_helper(graded_multivector_t<scalar_t, space_mask0, rank_size0>& result, const graded_multivector_t<scalar_t, space_mask1, rank_size1>& u)
 	{
 		using traits = SBLib::hodge_conjugacy_traits<subspace_mask, space_mask0>;
-		using ref_type = decltype(result.get<traits::bit_set>());
+		using ref_type = decltype(get<traits::bit_set>(result));
 		static_assert((subspace_mask & space_mask0) == subspace_mask, "Cannot calculate Hodge dual over non-embedding space. Please project onto target space first.");
 		static_assert((subspace_mask ^ traits::bit_set) == space_mask0, "Incorrect dual space.");
-		assign<ref_type>::conjugate<traits::sign>(result.get<traits::bit_set>(), u.get<subspace_mask>());
+		scalar_t u_component = get<subspace_mask>(u);
+		assign<traits::sign, ref_type>::conjugate(get<traits::bit_set>(result), u_component);
 	}
 };
 //
@@ -145,7 +153,7 @@ auto hodge_conjugate(const graded_multivector_t<scalar_t, space_mask, rank_size>
 {
 	using multivec_t = graded_multivector_t<scalar_t, space_mask, vector_t<scalar_t, space_mask>::dimension_size - rank_size>;
 	multivec_t result(multivec_t::UNINITIALIZED);
-	SBLib::for_each_combination< SBLib::select_combinations<space_mask, rank_size> >::iterate<hodge_conjugate_helper>(result, u);
+	SBLib::for_each_combination< SBLib::select_combinations<space_mask, rank_size> >::template iterate<hodge_conjugate_helper>(result, u);
 	return std::move(result);
 }
 
@@ -255,15 +263,15 @@ class test_multivector : public RegisteredFunctor
 				if (file.is_open())
 				{
 					file << version_string << " " << version << std::endl;
-					file << " " << test1.cget<e0>();
-					file << " " << test1.cget<e1>();
-					file << " " << test1.cget<e2>();
-					file << " " << test2.cget<e0>();
-					file << " " << test2.cget<e1>();
-					file << " " << test2.cget<e2>();
-					file << " " << test3.cget<e0>();
-					file << " " << test3.cget<e1>();
-					file << " " << test3.cget<e2>();
+					file << " " << get<e0>(test1);
+					file << " " << get<e1>(test1);
+					file << " " << get<e2>(test1);
+					file << " " << get<e0>(test2);
+					file << " " << get<e1>(test2);
+					file << " " << get<e2>(test2);
+					file << " " << get<e0>(test3);
+					file << " " << get<e1>(test3);
+					file << " " << get<e2>(test3);
 				}
 			}
 		}

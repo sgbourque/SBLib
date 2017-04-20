@@ -198,15 +198,16 @@ public:
 			const std::string delimiter = (loop == 0) ? "" : output_traits_t::delimiter();
 			const std::string prefix    = (SBLib::bit_count(bit_mask) <= 1) ? " " : output_traits_t::prefix();
 			const std::string postfix   = (SBLib::bit_count(bit_mask) <= 1) ? "" : output_traits_t::postfix();
-			out << delimiter << V.template get<bit_mask>() << prefix;
-			SBLib::for_each_bit_index<bit_mask>::iterate<output_basis<outer_basis_traits<output_traits_t>>::do_action>(out);
+			out << delimiter << get<bit_mask>(V) << prefix;
+			using output = output_basis<outer_basis_traits<output_traits_t>>;
+			SBLib::for_each_bit_index<bit_mask>::template iterate< output::template do_action >(out);
 			out << postfix;
 		}
 
 		template<typename scalar_t, size_t space_mask>
 		do_action(std::ostream& out, const graded_multivector_t<scalar_t, space_mask, 0>& V)
 		{
-			out << V.template get<bit_mask>();
+			out << get<bit_mask>(V);
 		}
 	};
 };
@@ -223,7 +224,9 @@ inline std::string to_string(const graded_multivector_t<field_type, space_mask, 
 	ss << output_traits_t::prefix();
 
 #if USING_STATIC_FOR_EACH_OUTPUT
-	SBLib::for_each_combination<SBLib::select_combinations<space_mask, rank_size>>::iterate<output_multivector_components<output_traits>::do_action>(ss, V);
+	using output = output_multivector_components<output_traits>;
+	SBLib::for_each_combination< SBLib::select_combinations<space_mask, rank_size> >::template iterate< output::template do_action >(ss, V);
+	//SBLib::for_each_combination<SBLib::select_combinations<space_mask, rank_size>>::template iterate< output_multivector_components<output_traits>::do_action >(ss, V);
 #else // #if USING_STATIC_FOR_EACH_OUTPUT
 	std::string delimiter;
 	for (size_t index = 0; index < V.dimension_size; ++index)

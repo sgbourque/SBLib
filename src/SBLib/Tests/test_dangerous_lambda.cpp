@@ -30,7 +30,6 @@ public:
 	template<typename... arg_types>
 	static auto call(std::tuple<arg_types...>&& arguments)
 	{
-		using tuple_t = std::tuple<arg_types...>;
 		return invoke_internal<sizeof...(arg_types)-1>::call(std::move(arguments));
 	}
 };
@@ -175,7 +174,7 @@ class test_dangerous_lambda : RegisteredFunctor
 	template<template<typename...> typename base_traits, typename... arg_types>
 	struct operator_traits
 	{
-		static auto operation(arg_types... args) { return base_traits<arg_types>::operation(std::forward_as_tuple(args...)); }
+		static auto operation(arg_types... args) { return base_traits<arg_types...>::template operation(std::forward_as_tuple(args...)); }
 	};
 
 

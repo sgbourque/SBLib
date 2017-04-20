@@ -28,13 +28,13 @@ class test_vector : public RegisteredFunctor
 	test_vector() : RegisteredFunctor("test_vector", fct) {}
 	static void fct()
 	{
-		vector_type1 test1{ -1.0f,-1.0f,-1.0f,-1.0f }; // sets all 4 components
+		vector_type1 test1{ -1.0f, -1.0f, -1.0f, -1.0f }; // sets all 4 components
 		vector_type1 test2;
 		vector_type2 test3{ -1.0f,-1.0f,0.0f,0.0f, 1.0f }; // only sets components for e0 and e2, all other being 0.
 		vector_type2 test4;
-		vector_type3 test5{ -1.0f,-1.0f }; // only sets components for e0 and e1, all other being 0.
+		vector_type3 test5{ -1.0f, -1.0f }; // only sets components for e0 and e1, all other being 0.
 		vector_type3 test6 = test1;
-		vector_type1 test7 = test5.project<vector_type1>(); // only e0 component is set to a non-zero value as e1 is not is vector_type1
+		vector_type1 test7 = get<vector_type1>(test5); // only e0 component is set to a non-zero value as e1 is not is vector_type1
 		vector_type1::scalar_type coeff1, coeff2;
 
 		const std::string input_filename = "../../tmp/test_vector.in";
@@ -70,15 +70,15 @@ class test_vector : public RegisteredFunctor
 			std::istream& in = file.is_open() ? file : std::cin;
 
 			in >> coeff1 >> coeff2;
-			in >> test1.get<e0>();
-			in >> test1.get<e2>();
-			in >> test1.get<e7>();
-			in >> test1.get<e15>();
+			in >> get<e0>(test1);
+			in >> get<e2>(test1);
+			in >> get<e7>(test1);
+			in >> get<e15>(test1);
 
-			in >> test2.get<e0>();
-			in >> test2.get<e2>();
-			in >> test2.get<e7>();
-			in >> test2.get<e15>();
+			in >> get<e0>(test2);
+			in >> get<e2>(test2);
+			in >> get<e7>(test2);
+			in >> get<e15>(test2);
 
 			if (!file.is_open())
 			{
@@ -87,57 +87,57 @@ class test_vector : public RegisteredFunctor
 				{
 					file << version_string << " " << version << std::endl;
 					file << coeff1 << " " << coeff2;
-					file << " " << test1.cget<e0>();
-					file << " " << test1.cget<e2>();
-					file << " " << test1.cget<e7>();
-					file << " " << test1.cget<e15>();
-					file << " " << test2.cget<e0>();
-					file << " " << test2.cget<e2>();
-					file << " " << test2.cget<e7>();
-					file << " " << test2.cget<e15>();
+					file << " " << get<e0>(test1);
+					file << " " << get<e2>(test1);
+					file << " " << get<e7>(test1);
+					file << " " << get<e15>(test1);
+					file << " " << get<e0>(test2);
+					file << " " << get<e2>(test2);
+					file << " " << get<e7>(test2);
+					file << " " << get<e15>(test2);
 				}
 			}
-			test3.get<e0>() = test1.cget<e0>();
-			//test3.get<e1>()  = test1.cget<e1>(); // this would be fine and would not have any effect! not doing it just to check explicitly data set in constructor
-			test3.get<e2>() = test1.cget<e2>();
-			test3.get<e7>() = test1.cget<e7>();
-			//test3.get<e13>() = test1.get<e13>(); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
-			test3.get<e15>() = test1.cget<e15>();
-			test4.get<e0>() = test2.cget<e0>();
-			//test4.get<e1>() = test2.cget<e1>(); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
-			test4.get<e2>() = test2.cget<e2>();
-			test4.get<e7>() = test2.cget<e7>();
-			test4.get<e13>() = test2.cget<e13>(); // this is fine even if test1 does not have any e13 component!
-			test4.get<e15>() = test2.cget<e15>();
+			get<e0>(test3) = get<e0>(test1);
+			//get<e1>(test3)  = get<e1>(test1); // this would be fine and would not have any effect! not doing it just to check explicitly data set in constructor
+			get<e2>(test3) = get<e2>(test1);
+			get<e7>(test3) = get<e7>(test1);
+			//get<e13>(test3) = get<e13>(test1); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
+			get<e15>(test3) = get<e15>(test1);
+			get<e0>(test4) = get<e0>(test2);
+			//get<e1>(test4) = get<e1>(test2); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
+			get<e2>(test4) = get<e2>(test2);
+			get<e7>(test4) = get<e7>(test2);
+			get<e13>(test4) = get<e13>(test2); // this is fine even if test1 does not have any e13 component!
+			get<e15>(test4) = get<e15>(test2);
 
-			test5.get<e0>() = test1.cget<e0>();
-			//test5.get<e1>()  = test1.cget<e1>(); // this would be fine and would not have any effect! not doing it just to check explicitly data set in constructor
-			test5.get<e2>() = test1.cget<e2>();
-			test5.get<e7>() = test1.cget<e7>();
-			//test3.get<e13>() = test1.get<e13>(); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
-			test5.get<e15>() = test1.cget<e15>();
-			test6.get<e0>() = test2.cget<e0>();
-			//test4.get<e1>() = test2.cget<e1>(); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
-			test6.get<e2>() = test2.cget<e2>();
-			test6.get<e7>() = test2.cget<e7>();
-			test6.get<e13>() = test2.cget<e13>(); // this is fine even if test1 does not have any e1 component!
-			test6.get<e15>() = test2.cget<e15>();
+			get<e0>(test5) = get<e0>(test1);
+			//get<e1>(test5)  = get<e1>(test1); // this would be fine and would not have any effect! not doing it just to check explicitly data set in constructor
+			get<e2>(test5) = get<e2>(test1);
+			get<e7>(test5) = get<e7>(test1);
+			//get<e13>(test3) = get<e13>(test1); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
+			get<e15>(test5) = get<e15>(test1);
+			get<e0>(test6) = get<e0>(test2);
+			//get<e1>(test4) = get<e1>(test2); // this would be fine and would not have any effect! not doing it just to check for unitialized data...
+			get<e2>(test6) = get<e2>(test2);
+			get<e7>(test6) = get<e7>(test2);
+			get<e13>(test6) = get<e13>(test2); // this is fine even if test1 does not have any e1 component!
+			get<e15>(test6) = get<e15>(test2);
 		}
 
 		vector_type3::scalar_type coeff1d = coeff1, coeff2d = coeff2;
 		auto test_result1 = coeff1 * test1 * coeff2 + test2;
 		// checking both const and non-const accessors
 		std::cout << "("
-			<< test_result1.cget<e0>() << ", "
-			<< test_result1.get<e2>() << ", "
-			<< test_result1.get<e7>() << ", "
-			<< test_result1.get<e15>()
+			<< get<e0>(test_result1) << ", "
+			<< get<e2>(test_result1) << ", "
+			<< get<e7>(test_result1) << ", "
+			<< get<e15>(test_result1)
 			<< ")" << std::endl;
 
 		std::cout << "0 = "
-			<< test_result1.cget<0>() << " = "
-			<< test_result1.get<e1 | e2>() << " = "
-			<< test_result1.get<e3>()
+			<< get<0>(test_result1) << " = "
+			<< get<e1 | e2>(test_result1) << " = "
+			<< get<e3>(test_result1)
 			<< std::endl;
 
 		std::cout << "test_result1: " << test_result1 << std::endl;
